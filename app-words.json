@@ -1,0 +1,35 @@
+{
+  "record": "tellop-app-words",
+  "version": 1,
+  "keys": [],
+  "records": [
+    {
+      "name": "players",
+      "label": { "tr": "Oyuncular", "en": "Players" },
+      "fields": [
+        { "name": "id", "label": { "tr": "Oyuncu numarası", "en": "Player number" } },
+        { "name": "owner_id", "label": { "tr": "Sahip", "en": "Owner" } },
+        { "name": "seat", "label": { "tr": "Sıra", "en": "Place in the list" } },
+        { "name": "name", "label": { "tr": "Ad", "en": "Name" } },
+        { "name": "animal", "label": { "tr": "Hayvan", "en": "Animal" } },
+        { "name": "level", "label": { "tr": "Seviye", "en": "Level" } },
+        { "name": "sound_on", "label": { "tr": "Ses", "en": "Sound" } },
+        { "name": "created_at", "label": { "tr": "Eklendiği zaman", "en": "When added" } }
+      ]
+    },
+    {
+      "name": "topic_scores",
+      "label": { "tr": "Konu sonuçları", "en": "Topic results" },
+      "fields": [
+        { "name": "player_id", "label": { "tr": "Oyuncu", "en": "Player" } },
+        { "name": "owner_id", "label": { "tr": "Sahip", "en": "Owner" } },
+        { "name": "topic", "label": { "tr": "Konu", "en": "Topic" } },
+        { "name": "rounds", "label": { "tr": "Turlar", "en": "Rounds" } },
+        { "name": "best_stars", "label": { "tr": "En çok yıldız", "en": "Most stars" } },
+        { "name": "best_correct", "label": { "tr": "En çok doğru", "en": "Most right answers" } },
+        { "name": "answered", "label": { "tr": "Cevaplanan sorular", "en": "Questions answered" } },
+        { "name": "correct", "label": { "tr": "Doğru cevaplar", "en": "Right answers" } }
+      ]
+    }
+  ]
+}

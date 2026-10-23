@@ -1,0 +1,1214 @@
+/*
+ * How this app looks.
+ *
+ * The values live next door in `tokens.css` and `fonts.css`, which **Tellop owns and
+ * replaces whole** when the look-and-feel step is approved. Everything here reads them
+ * by name, so a new look is two files changing rather than a search through rules - and
+ * nothing here ever writes a colour, a radius, a shadow or a font family of its own.
+ *
+ * Every name ending in `-foreground` is what is legible *on* the name beside it. Use the
+ * pair; one half of it over some other colour is a pair of colours nobody checked.
+ *
+ * The imports have to be the first statements in the file: CSS puts `@import` before
+ * every rule, and a browser ignores one that comes later. `tokens.css` and `fonts.css`
+ * come first on purpose: they define the names everything below reads.
+ *
+ * ## The component kit reads the same names
+ *
+ * The pieces under `components/` are written in Tailwind's utility names - `bg-primary`,
+ * `text-muted-foreground`, `rounded-lg`. The `@theme` block below is the one place those
+ * names are joined to this app's own: `--color-primary: var(--primary)` and nothing else,
+ * so a piece of the kit is coloured by `tokens.css` exactly like a rule written by hand.
+ * There is no colour, no radius, no shadow and no font family anywhere in this file.
+ *
+ * `kit.css` beside this one is the kit's own sheet, copied in whole from the people who
+ * wrote the pieces - the open/closed states, the fade edges, the shimmer. It travels with
+ * the app so nothing has to be fetched for it, and it names none of this app's colours;
+ * every file it came from is written down in `components/PROVENANCE.json`.
+ *
+ * Two of the thirty-four names are deliberately NOT in that block under their own spelling -
+ * `--shadow` and `--radius` - and the reason is mechanical rather than stylistic. Measured:
+ * adding `--shadow: var(--shadow)` there puts `:root,:host{--shadow:var(--shadow)}` into the
+ * built stylesheet, after `tokens.css`'s real value and therefore winning over it, and a
+ * declaration that refers to itself is one CSS throws away. The shadow would silently stop
+ * existing everywhere. So both are read straight where a rule wants them -
+ * `box-shadow: var(--shadow)`, `border-radius: var(--radius)` - the way `--reading` and
+ * `--font-body` already are.
+ *
+ * That is about the two names themselves, and it is NOT the same as saying the kit's own
+ * `shadow-*` and `rounded-*` classes cannot reach this look. They can, and they do, because
+ * the names in the block are DIFFERENT names: `--shadow-sm` is not `--shadow`, so there is
+ * no self-reference and nothing is thrown away. The four small steps are pointed at this
+ * look's shadow, which is what makes a kit card carry the shadow the look chose without one
+ * line of the piece being edited. Measured in the built stylesheet: `.shadow-md` and every
+ * `shadow-sm` rule come out as `--tw-shadow: var(--shadow)`, where before the same build
+ * gave them a fixed grey of their own. `2xs` and `xs` are pointed the same way although no
+ * piece here uses one yet, so the day one does it inherits the look rather than a stranger's
+ * grey. `shadow-lg`, `shadow-xl` and up are deliberately left as they came:
+ * those are what a dialog or a menu floats on, and how far a thing floats above the page is
+ * about depth rather than about a look's own resting shadow. `shadow-(--shadow)` still works
+ * and still means the same thing; it is now the long way round for the small steps.
+ *
+ * The kit's corner sizes are derived from `--radius` under the `--radius-*` names, which
+ * collide with nothing - `xs` through `4xl`, multiples of the one chosen radius, so every
+ * `rounded-*` class in the kit is this look's corner too.
+ */
+
+@import "./tokens.css";
+@import "./fonts.css";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./kit.css";
+@import "./print.css";
+
+/*
+ * The dark half is used only when DESIGN.md records an explicit request.
+ * Its switch is pressed by the visitor, never selected by the operating system.
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * The join. Every right-hand side is a name `tokens.css` or `fonts.css` defines, so this
+ * block invents nothing - it only says which utility name reaches which of this app's own.
+ *
+ * The corner sizes are multiples of the one chosen radius rather than a subtraction, so a
+ * look that asked for square corners stays square at every size instead of going negative.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-xs: calc(var(--radius) * 0.4);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --shadow-2xs: var(--shadow);
+  --shadow-xs: var(--shadow);
+  --shadow-sm: var(--shadow);
+  --shadow-md: var(--shadow);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-display);
+}
+
+/*
+ * The starting styles, and why they are inside a layer.
+ *
+ * Everything below is what this app looks like before anybody writes a line of their own:
+ * the page, the headings, the form, the five bands. It sits in `@layer base` so that a
+ * utility class always wins over it - which is the whole reason the component kit works.
+ *
+ * A rule written OUTSIDE a layer beats every layer, so an unlayered `button { ... }` here
+ * would quietly override the kit's own Button on every screen and nothing would report it:
+ * the colours would still be this app's, and the shape, the size and the hover would not be
+ * the kit's. That is the trap this block exists to close.
+ *
+ * So: starting styles go in here. Anything a screen wants differently is a utility class or
+ * a rule of its own, and it wins.
+ *
+ * The first rule is the one default the kit is written against. A border utility with no
+ * colour of its own draws in the current text colour, which is never what a card's divider
+ * means; this is what makes it draw in `--border` instead.
+ */
+@layer base {
+  * {
+    box-sizing: border-box;
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
+    font-size: var(--reading);
+    line-height: 1.55;
+  }
+
+  /*
+   * The starting page's own shape, and why it is a class rather than `body` and
+   * `main`.
+   *
+   * The narrow centred column below is what the notes demo this template ships
+   * wants. It is NOT what a screen wants, and `body` and `main` are every screen:
+   * a layer rule is beaten only by a utility somebody wrote, and `flex-1` writes
+   * `flex`, not `max-width`, while nothing writes a margin or a padding for you.
+   *
+   * Measured 2026-09-02 on a real project set up from this template, with a real
+   * look emitted into it, at 1280x800. The look step draws a person one full-width
+   * page of their own app - top bar flush to the edge, content filling what is
+   * left. Drawing that same page's markup here, `main` came out 372.8 x 505.6
+   * with `max-width: 640px` and `margin: 0 433.6px` instead of 1280 x 747; and an
+   * ordinary sidebar layout - an `<aside>` beside `<main class="flex flex-1 ...">`
+   * - put `main` at 640px with two 188px gutters of empty page around it, the
+   * whole app floating 48px below the top of the window on `body`'s padding.
+   *
+   * So the shape moved onto the page that wants it. `max-width` is the column
+   * plus its own gutters because everything here is `border-box`, which is what
+   * makes the demo land pixel for pixel where it did before.
+   *
+   * This is the same trap the `button`, `input` and `label` rules below were
+   * narrowed for. It reaches `body`, `main`, `form`, `h1` and `h2` too, and those
+   * five are what a screen is made of, so their shape lives on `.starting-page`
+   * and their colour, face and size stay here where every screen wants them.
+   */
+  .starting-page {
+    margin: 0 auto;
+    max-width: calc(40rem + 2.5rem);
+    padding: 3rem 1.25rem;
+  }
+
+  /*
+   * A heading's FACE is a starting style; its SPACING is the page's business.
+   *
+   * The face, the weight and the size stay here, so a bare `<h1>` on any screen
+   * is set in the look's display family rather than in the browser's own bold.
+   * The margins moved to the starting page for the reason `.starting-page` and
+   * the form rule above give: measured 2026-09-02, the look board draws its page
+   * head as `flex flex-col gap-1` around an `h1` and a line under it, and the
+   * same markup in the app came out 5.6px taller because a bare `h1` rule was
+   * still adding a bottom margin inside a flex column that had already said what
+   * the gap was. `h2`'s was 36px above every one of them.
+   */
+  h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    /* The weight that face was actually shipped at - never the browser's own bold,
+       which it would have to fake for a display face that ships one weight. */
+    font-weight: var(--display-weight);
+    font-size: 1.75rem;
+    letter-spacing: -0.01em;
+  }
+
+  h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: var(--display-weight);
+    font-size: 1.1rem;
+  }
+
+  .starting-page h1 {
+    margin-bottom: 0.35rem;
+  }
+
+  .starting-page h2 {
+    margin: 2.25rem 0 0.75rem;
+  }
+
+  .tagline {
+    margin: 0;
+    color: var(--muted-foreground);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-foreground);
+    font-size: 0.75rem;
+    vertical-align: 0.15em;
+  }
+
+  .notice {
+    margin: 1.25rem 0 0;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
+  }
+
+  .notes {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .notes li {
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow);
+    color: var(--card-foreground);
+  }
+
+  .notes li + li {
+    margin-top: 0.5rem;
+  }
+
+  .empty {
+    color: var(--muted-foreground);
+  }
+
+  /*
+   * The starting page's form, for the same reason `.starting-page` exists above.
+   * A bottom-aligned wrapping row is what the notes demo wants; it is not what
+   * every form a screen writes wants, and `<form>` is every form. Measured: a
+   * form written `flex flex-col gap-4` still came out `flex-wrap: wrap` and
+   * `align-items: flex-end`, because those two are not what `flex-col` sets.
+   */
+  .starting-page form {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-end;
+  }
+
+  /*
+   * `:not([data-slot])` on these three for the reason the `button` rule below
+   * spells out: a kit piece writes utilities only for what it means to set, so a
+   * base rule reaches straight through for everything else. Measured 2026-09-02
+   * on a page holding one of every kit piece, before the scoping: the kit's own
+   * Input carried this rule's `margin-top` (4px) and its focus rule's outline
+   * width and offset (2px each, drawn by nobody only because the piece says
+   * `outline-none`); the kit's Label was `flex: 1 1 256px` and painted in
+   * `--muted-foreground` where it means to inherit the page's ink.
+   */
+  label:not([data-slot]) {
+    display: block;
+    flex: 1 1 16rem;
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+  }
+
+  input:not([data-slot]) {
+    margin-top: 0.25rem;
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--input);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--foreground);
+    font: inherit;
+  }
+
+  input:not([data-slot]):focus-visible,
+  button:not([data-slot]):not([class*="rounded-"]):not([class*="bg-"]):not([class*="text-"]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .secondary {
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+  }
+
+  .panel {
+    background: var(--popover);
+    color: var(--popover-foreground);
+  }
+
+  .side {
+    background: var(--sidebar);
+    color: var(--sidebar-foreground);
+    border-right: 1px solid var(--sidebar-border);
+  }
+
+  .side .current {
+    background: var(--sidebar-primary);
+    color: var(--sidebar-primary-foreground);
+  }
+
+  .side a:hover {
+    background: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
+  }
+
+  .side a:focus-visible {
+    outline: 2px solid var(--sidebar-ring);
+  }
+
+  .quiet {
+    background: var(--muted);
+  }
+
+  /*
+   * The five bands are MARKS, never words.
+   *
+   * They are held to the floor a shape has to clear against a surface, which is
+   * lower than the floor words have to clear - so painting a caption in one is
+   * asking a colour to do a job it was never checked for. Measured: a band that
+   * cleared its surface as a mark came back at 2.57 against a panel, well under
+   * what words need. Fill with them; label beside them in `--foreground`.
+   */
+  .figure .one { background: var(--chart-1); }
+  .figure .two { background: var(--chart-2); }
+  .figure .three { background: var(--chart-3); }
+  .figure .four { background: var(--chart-4); }
+  .figure .five { background: var(--chart-5); }
+
+  .figure li {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    color: var(--foreground);
+  }
+
+  .figure span {
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 3px;
+  }
+
+  /*
+   * A plain `<button>` that nobody styled. The kit's own Button is the one to reach for -
+   * this is what the browser's grey rectangle becomes until then.
+   *
+   * `:not([data-slot])` is what holds it to that, and it was measured rather than
+   * guessed. The sentence that used to stand here - "a utility class or the kit's
+   * Button beats it from outside this layer" - is true only of a utility somebody
+   * WROTE, and the kit's quieter buttons deliberately write none: `variant="ghost"`
+   * names no background and no colour at all, because it means "take the surface you
+   * are on". So this rule reached straight through and painted every ghost button as a
+   * filled primary one, and an `outline` button - which names a background but no
+   * colour - came out with white words on a white face. The same went for every
+   * `Toggle`. Measured 2026-09-02 on the first page to use them: computed background
+   * `var(--primary)`, computed colour `var(--primary-foreground)`, on buttons whose
+   * class list carried the ghost variant correctly.
+   *
+   * Every piece of the kit marks itself with `data-slot`, so naming that is most of
+   * the fix, and a hand-written button keeps exactly the look it had.
+   *
+   * `data-slot` is not all of it, though, because two buttons in the kit are drawn by
+   * somebody else's code and carry no mark of ours. Measured 2026-09-02 with the first
+   * scoping alone in place: the month arrows on every calendar and date field - drawn
+   * by react-day-picker, styled by our own `buttonVariants({ variant: "ghost" })` -
+   * came out 28x28 filled `var(--primary)` with white marks in them, and the date
+   * field's clear cross came out 32x17.6 filled the same, inside a 16px slot. So the
+   * rule also stands aside for a button that carries any styling of its own: a class
+   * naming a corner, a background or an ink. A button nobody styled has none of those
+   * and keeps every line below; the three narrowings cost it nothing.
+   */
+  button:not([data-slot]):not([class*="rounded-"]):not([class*="bg-"]):not([class*="text-"]) {
+    padding: 0.55rem 1rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--primary);
+    color: var(--primary-foreground);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button:not([data-slot]):not([class*="rounded-"]):not([class*="bg-"]):not([class*="text-"])[disabled] {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .problem {
+    flex: 1 0 100%;
+    margin: 0;
+    color: var(--destructive);
+    font-size: 0.9rem;
+  }
+
+  .problem strong {
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius);
+    background: var(--destructive);
+    color: var(--destructive-foreground);
+  }
+}
+
+/*
+ * Math adventure's own screens.
+ *
+ * Unlayered on purpose: a few rules here resize the kit's Button for a child's
+ * hands (the answer choices, the number pad, the big Play buttons), and an
+ * unlayered rule is what beats the kit's size utilities. Nothing here sets a
+ * property a utility on the same element also sets. Colours, corners, shadows
+ * and faces are the names from `tokens.css` and `fonts.css`; the five marks
+ * fill shapes and lines, never words.
+ */
+
+.math-page {
+  min-height: 100dvh;
+  background: var(--background);
+}
+
+.math-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.math-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 1rem;
+  text-align: center;
+}
+
+.math-title {
+  font-size: clamp(1.75rem, 3vw + 1rem, 2.6rem);
+  line-height: 1.15;
+}
+
+.math-lead {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 1.15rem;
+}
+
+.math-note {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.math-problem {
+  margin: 0;
+  color: var(--destructive);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.math-badge {
+  display: inline-block;
+  padding: 0.3rem 0.9rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: 700;
+}
+
+/* The bar at the top of the topics and of a round. */
+.math-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.math-bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.math-bar-topic {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 1.05rem;
+}
+
+.math-switch-label {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* Players. */
+.math-player-grid,
+.math-topic-grid,
+.math-progress-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.math-player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.math-player-grid > li {
+  display: flex;
+}
+
+.math-player-card,
+.math-topic-card {
+  width: 100%;
+  box-shadow: var(--shadow);
+}
+
+.math-player-name {
+  font-size: 1.4rem;
+  overflow-wrap: anywhere;
+}
+
+.math-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  background: var(--accent);
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.math-avatar-big {
+  width: 6rem;
+  height: 6rem;
+  font-size: 3.6rem;
+}
+
+.math-player-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.math-player-head .math-title {
+  overflow-wrap: anywhere;
+}
+
+.math-add-card {
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  height: 100%;
+  min-height: 15rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+}
+
+.math-welcome {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1.5rem 0.5rem;
+  box-shadow: var(--shadow);
+}
+
+.math-big-button {
+  height: 3rem;
+  padding: 0 1.4rem;
+  font-size: 1.1rem;
+}
+
+.math-star-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.math-animal-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.math-animal-choice {
+  height: 3rem;
+  padding: 0;
+  font-size: 1.7rem;
+}
+
+/* Stars: gold when won, an outline when not yet. */
+.math-stars {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+
+.math-star {
+  width: 1.4rem;
+  height: 1.4rem;
+  color: var(--muted-foreground);
+}
+
+.math-star-on {
+  color: var(--chart-1);
+  fill: var(--chart-1);
+}
+
+.math-stars-big .math-star {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+/* Levels and topics. */
+.math-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.math-level-row {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.4rem;
+  max-width: 25rem;
+}
+
+.math-level-button {
+  width: 100%;
+  height: 2.75rem;
+  padding: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.math-topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.math-topic-grid > li {
+  display: flex;
+}
+
+.math-example {
+  padding: 0.5rem 0.75rem;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.math-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.math-progress-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+}
+
+/* A round. */
+.math-progress {
+  gap: 0.4rem;
+}
+
+.math-question {
+  box-shadow: var(--shadow);
+  padding: 1rem 0;
+}
+
+.math-ask {
+  margin: 0;
+  max-width: 40rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 1vw + 1rem, 1.6rem);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.math-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 700;
+}
+
+.math-flame {
+  color: var(--chart-3);
+  fill: var(--chart-3);
+}
+
+/*
+ * A sum, drawn from its pieces.
+ *
+ * Every piece is a flex item centred on the same line, and each has the same
+ * line height, so the numbers, signs and the box share one base line. A
+ * fraction is centred on that line, so its line sits with the signs. Pieces
+ * that must sit against a neighbour (a bracket, a comma, a power after a
+ * bracket) take back the gap between pieces with a negative margin.
+ * `"case"` asks a typeface for its signs and brackets centred on the numbers,
+ * where it has them; a typeface without them draws its usual ones.
+ */
+.math-sum {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: "case" 1;
+  line-height: 1.2;
+}
+
+/*
+ * A question's sum takes its size from the card it is in (`cqi`, a hundredth
+ * of the card's width), so the longest answered sum still fits on one line on
+ * a phone, and a wide window keeps the full size.
+ */
+.math-question [data-slot="card-content"] {
+  container-type: inline-size;
+}
+
+.math-sum-big {
+  font-size: clamp(1.5rem, 8.5cqi, 4rem);
+}
+
+.math-sum-small {
+  justify-content: flex-start;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.math-op {
+  color: var(--primary);
+}
+
+/* Brackets and commas belong to the numbers beside them: ink like the numbers, and no gap on their inner side. */
+.math-open,
+.math-close,
+.math-comma {
+  color: var(--foreground);
+}
+
+.math-open {
+  margin-right: -0.32em;
+}
+
+.math-close {
+  margin-left: -0.32em;
+}
+
+.math-comma {
+  margin-left: -0.3em;
+}
+
+/* A comma after a box keeps clear of the box's border. */
+.math-box + .math-comma {
+  margin-left: -0.18em;
+}
+
+/* A bracket after a power keeps clear of the power's raised number. */
+.math-n:has(> .math-sup) + .math-close {
+  margin-left: -0.25em;
+}
+
+.math-n {
+  white-space: nowrap;
+}
+
+.math-x {
+  font-style: italic;
+}
+
+/*
+ * A raised power: placed from the base line, not by the typeface's own
+ * superscript, so its bottom sits about half way up the number before it and
+ * its top a little above that number, whatever the typeface. Moving it does
+ * not change the height of its line, so the pieces stay level. `top` is the
+ * side the kit's base rule for `sup` sets, so it is the side to set here.
+ */
+.math-sup {
+  position: relative;
+  top: -0.74em;
+  margin-left: 0.02em;
+  font-size: 0.55em;
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+/* A slanted x leans into its power: give the power room. */
+.math-sup-x {
+  margin-left: 0.1em;
+}
+
+/* A power after a bracket sits against the bracket. */
+.math-after-bracket {
+  margin-left: -0.3em;
+}
+
+/*
+ * A square root: its sign and its top line are drawn as one shape around the
+ * number, from the number's own box, so the line always meets the sign. The
+ * long stroke leans left from the start of the line down to the base line,
+ * and the short stroke rises left from there. The line clears the number by
+ * about a twentieth of the type size (measured in the built page).
+ */
+.math-root {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.62em;
+  padding: 0 0.05em 0 0.08em;
+  border-top: 0.085em solid currentColor;
+  line-height: 0.91;
+}
+
+.math-root::before,
+.math-root::after {
+  content: "";
+  position: absolute;
+  border-left: 0.085em solid currentColor;
+}
+
+.math-root::before {
+  top: -0.085em;
+  bottom: 0.105em;
+  left: -0.04em;
+  transform-origin: top left;
+  transform: skewX(-17deg);
+}
+
+.math-root::after {
+  bottom: 0.105em;
+  left: -0.34em;
+  height: 0.46em;
+  transform-origin: bottom left;
+  transform: skewX(30deg);
+}
+
+.math-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.7em;
+  line-height: 1.1;
+}
+
+/* The line is the top number's lower edge, stretched to the wider of the two numbers. */
+.math-frac-top {
+  align-self: stretch;
+  text-align: center;
+  padding: 0 0.1em 0.05em;
+  border-bottom: 0.09em solid currentColor;
+}
+
+.math-frac-bottom {
+  padding: 0.05em 0.1em 0;
+}
+
+.math-box {
+  display: inline-block;
+  width: 1.5em;
+  height: 1.15em;
+  border: 0.07em dashed var(--primary);
+  background: var(--secondary);
+  vertical-align: middle;
+}
+
+/* The box in place of a power: the size and place of a power. */
+.math-box-small {
+  width: 0.95em;
+  height: 1.05em;
+  border-width: 0.1em;
+  vertical-align: -0.18em;
+}
+
+/* An answered box: the answer inside, its line height its own, so the box keeps its shape. */
+.math-box-filled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 1.5em;
+  height: auto;
+  min-height: 1.15em;
+  padding: 0 0.2em;
+  border-style: solid;
+  border-color: var(--chart-2);
+  background: var(--card);
+  color: var(--card-foreground);
+  line-height: 1.1;
+}
+
+.math-box-small.math-box-filled {
+  min-width: 0.95em;
+  min-height: 1.05em;
+  padding: 0 0.1em;
+  line-height: 1;
+}
+
+/* Pictures beside a question. */
+.math-picture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.math-things {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  max-width: 22rem;
+  font-size: clamp(1.8rem, 3vw + 1rem, 2.6rem);
+  line-height: 1.1;
+}
+
+.math-thing {
+  position: relative;
+}
+
+.math-thing-crossed {
+  opacity: 0.35;
+}
+
+.math-thing-crossed::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -8%;
+  width: 116%;
+  height: 0.12em;
+  background: var(--chart-3);
+  transform: rotate(-35deg);
+}
+
+.math-picture > .math-op {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 700;
+}
+
+.math-group {
+  display: inline-flex;
+  padding: 0.6rem;
+  border-radius: var(--radius);
+  background: var(--muted);
+}
+
+.math-group .math-things {
+  max-width: 12rem;
+}
+
+/*
+ * Two groups to put together stand side by side with the plus sign between
+ * them. On a card too narrow for that row (two groups of at most 12rem, the
+ * sign and the gaps), they stand one above the other with the sign between,
+ * so the sign never ends up beside one group only.
+ */
+@container (max-width: 30rem) {
+  .math-picture-groups {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+
+.math-rect-frame {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  font-weight: 600;
+}
+
+.math-rect {
+  display: block;
+  border: 0.25rem solid var(--chart-5);
+  background: var(--secondary);
+}
+
+.math-rect-wide { width: 16rem; height: 5.5rem; }
+.math-rect-mid { width: 14rem; height: 7.5rem; }
+.math-rect-near { width: 12rem; height: 9rem; }
+.math-rect-square { width: 9rem; height: 9rem; }
+
+.math-rect-bottom {
+  grid-column: 1;
+  text-align: center;
+}
+
+/* Answering. */
+.math-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.math-choice {
+  height: 5rem;
+  border-width: 2px;
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+.math-choice:disabled {
+  opacity: 1;
+}
+
+.math-choice-right {
+  border-width: 0.25rem;
+  border-color: var(--chart-2);
+}
+
+.math-choice-miss {
+  border-width: 0.25rem;
+  border-color: var(--chart-3);
+}
+
+.math-choice-quiet {
+  opacity: 0.55;
+}
+
+.math-choice-quiet:disabled {
+  opacity: 0.55;
+}
+
+.math-typing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.math-typed {
+  min-width: 10rem;
+  min-height: 3.6rem;
+  padding: 0.3rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--card-foreground);
+  font-family: var(--font-display);
+  font-size: 2.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.math-typed-empty {
+  color: var(--muted-foreground);
+}
+
+.math-typed-right {
+  border-width: 0.25rem;
+  border-color: var(--chart-2);
+}
+
+.math-typed-miss {
+  border-width: 0.25rem;
+  border-color: var(--chart-3);
+}
+
+.math-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.math-key {
+  height: 3.4rem;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.math-feedback {
+  border-left: 0.5rem solid var(--chart-2);
+  box-shadow: var(--shadow);
+}
+
+.math-feedback-miss {
+  border-left-color: var(--chart-3);
+}
+
+.math-feedback-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.math-worked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.math-end {
+  box-shadow: var(--shadow);
+  padding: 1.5rem 0;
+}
+
+/* A little bounce for a right answer and for the stars, unless motion is reduced. */
+@keyframes math-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.math-feedback-right .math-feedback-title,
+.math-stars-big .math-star-on {
+  animation: math-pop 0.35s ease-out both;
+}
+
+/* The title spans the card: it grows from its first letter, so none slides under the card's edge. */
+.math-feedback-right .math-feedback-title {
+  transform-origin: left center;
+}
+
+.math-stars-big .math-star-on:nth-child(2) { animation-delay: 0.12s; }
+.math-stars-big .math-star-on:nth-child(3) { animation-delay: 0.24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .math-feedback-right .math-feedback-title,
+  .math-stars-big .math-star-on {
+    animation: none;
+  }
+}
+
+@media (max-width: 30rem) {
+  .math-animal-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .math-choice {
+    height: 4rem;
+    font-size: 1.8rem;
+  }
+
+  .math-rect-wide { width: 12rem; height: 4.2rem; }
+  .math-rect-mid { width: 11rem; height: 6rem; }
+  .math-rect-near { width: 10rem; height: 7.5rem; }
+  .math-rect-square { width: 8rem; height: 8rem; }
+}
