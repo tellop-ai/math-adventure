@@ -112,6 +112,7 @@ function PlayerForm({ locale, player, onSaved, onCancel }) {
             id="player-level"
             className="w-full"
             value={String(level)}
+            aria-describedby="player-level-hint"
             onChange={(event) => setLevel(Number(event.target.value))}
           >
             {LEVELS.map((entry) => (
@@ -120,6 +121,7 @@ function PlayerForm({ locale, player, onSaved, onCancel }) {
               </NativeSelectOption>
             ))}
           </NativeSelect>
+          <p id="player-level-hint" className="text-sm text-muted-foreground">{t('math.player.levelHint', locale)}</p>
         </div>
         {problem !== '' ? <p className="math-problem" role="alert">{t(problem, locale)}</p> : null}
       </div>

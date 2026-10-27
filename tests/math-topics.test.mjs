@@ -52,8 +52,9 @@ function valueOf(pieces, given) {
     }
     if ('sqrt' in piece) return Math.sqrt(piece.sqrt);
     if ('x' in piece) {
-      assert.equal(typeof given.x, 'number', 'an x with no value');
-      return piece.x[0] * given.x ** piece.x[1];
+      const letter = piece.letter ?? 'x';
+      assert.equal(typeof given[letter], 'number', `a ${letter} with no value`);
+      return piece.x[0] * given[letter] ** piece.x[1];
     }
     if (isOp(piece, '(')) {
       const inside = sum();
@@ -130,12 +131,12 @@ function* everyQuestion() {
   }
 }
 
-test('eight levels, five topics each, forty different topics', () => {
+test('eight levels, 51 different topics: blocks on levels 1 to 3, two more stops on each of levels 6 to 8', () => {
   assert.equal(LEVELS.length, 8);
   assert.deepEqual(LEVELS.map((level) => level.level), [1, 2, 3, 4, 5, 6, 7, 8]);
-  for (const level of LEVELS) assert.equal(level.topics.length, 5, `level ${level.level}`);
-  assert.equal(TOPIC_IDS.length, 40);
-  assert.equal(new Set(TOPIC_IDS).size, 40);
+  assert.deepEqual(LEVELS.map((level) => level.topics.length), [7, 7, 6, 5, 5, 7, 7, 7]);
+  assert.equal(TOPIC_IDS.length, 51);
+  assert.equal(new Set(TOPIC_IDS).size, 51);
   for (const id of TOPIC_IDS) {
     assert.match(id, /^[a-z][a-z0-9-]{1,31}$/u);
     assert.equal(TOPICS[id].level, LEVELS.find((level) => level.topics.includes(id)).level);
@@ -281,8 +282,66 @@ test('word questions and pictures say what their answers need', () => {
       default:
         break;
     }
+    switch (question.ask?.key) {
+      case 'math.q.chanceDice':
+        assert.ok(values.n >= 1 && values.n <= 5, what);
+        assert.equal(answer, (6 - values.n) / 6, what);
+        break;
+      case 'math.q.patternTerm': {
+        const shown = question.show.filter((piece) => 'n' in piece).map((piece) => piece.n);
+        const step = shown[1] - shown[0];
+        shown.forEach((value, at) => assert.equal(value, shown[0] + at * step, `${what}: an even pattern`));
+        assert.ok(shown.every((value) => value > 0), `${what}: the terms shown are above zero`);
+        assert.equal(answer, shown[0] + (values.n - 1) * step, what);
+        break;
+      }
+      case 'math.q.mean': {
+        const shown = question.show.filter((piece) => 'n' in piece).map((piece) => piece.n);
+        assert.ok(shown.length >= 3 && shown.length <= 5 && shown.every((value) => value >= 1), what);
+        assert.equal(answer * shown.length, shown.reduce((total, value) => total + value, 0), what);
+        break;
+      }
+      default:
+        break;
+    }
     if (question.picture?.kind === 'groups') {
       assert.equal(question.picture.groups[0] + question.picture.groups[1], answer, what);
+    }
+    if (question.picture?.kind === 'tower') {
+      assert.equal(question.picture.count, answer, what);
+      assert.ok(question.picture.count >= 1 && question.picture.count <= 19, what);
+    }
+    if (question.picture?.kind === 'ten-places') {
+      assert.equal(question.picture.filled + answer, 10, what);
+      assert.ok(question.picture.filled >= 1 && question.picture.filled <= 9, what);
+    }
+    if (question.picture?.kind === 'blocks') {
+      const { hundreds, tens, ones } = question.picture;
+      assert.equal(hundreds * 100 + tens * 10 + ones, answer, what);
+      assert.ok([hundreds, tens, ones].every((count) => Number.isInteger(count) && count >= 0 && count <= 9), what);
+    }
+    if (question.picture?.kind === 'blocks-sum') {
+      const [a, b] = question.picture.groups;
+      assert.equal(a.tens * 10 + a.ones + b.tens * 10 + b.ones, answer, what);
+      assert.ok(answer <= 99 && [a.tens, a.ones, b.tens, b.ones].every((count) => count >= 0 && count <= 9), what);
+      const shown = question.show.filter((piece) => 'n' in piece).map((piece) => piece.n);
+      assert.deepEqual(shown, [a.tens * 10 + a.ones, b.tens * 10 + b.ones], `${what}: the sum is the blocks`);
+    }
+    if (question.picture?.kind === 'marbles') {
+      const { red, blue } = question.picture;
+      assert.ok(red >= 1 && blue >= 1, what);
+      assert.equal(answer, red / (red + blue), what);
+    }
+    if (question.picture?.kind === 'equations') {
+      // Some whole y makes both lines true with x the answer.
+      const holds = (y) => question.picture.lines.every((line) => {
+        const [left, right] = sides(line).map((part) => valueOf(part, { x: answer, y }));
+        return near(left, right);
+      });
+      let found = false;
+      for (let y = -60; y <= 60 && !found; y += 1) found = holds(y);
+      assert.ok(found, `${what}: the two lines have a whole answer`);
+      assert.equal(question.picture.lines.length, 2, what);
     }
     if (question.picture?.kind === 'things') {
       assert.equal(question.picture.count - question.picture.crossed, answer, what);
@@ -405,4 +464,20 @@ test('numbers are written the way each language writes them', () => {
   assert.equal(formatNumber(0.24, 'tr'), '0,24');
   assert.equal(formatPercent(85, 'en'), '85%');
   assert.equal(formatPercent(85, 'tr'), '%85');
+});
+
+test('two-step with x on both sides writes its worked lines with no minus before a negative number and no sharing by 1', () => {
+  let bothSides = 0;
+  for (let seed = 0; seed < 3000; seed += 1) {
+    const question = makeQuestion('two-step', seed);
+    if (!question.show.some((piece, at) => at > 3 && 'x' in piece)) continue;
+    bothSides += 1;
+    for (const line of question.worked) {
+      line.forEach((piece, at) => {
+        if (piece.op === '−') assert.ok(!(line[at + 1]?.n < 0), `seed ${seed}: − before a negative number`);
+        if (piece.op === '÷') assert.notEqual(line[at + 1]?.n, 1, `seed ${seed}: shared by 1`);
+      });
+    }
+  }
+  assert.ok(bothSides > 800, `x on both sides in about a third of the questions, here ${bothSides}`);
 });

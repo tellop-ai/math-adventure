@@ -545,7 +545,9 @@
 
 /* Players. */
 .math-player-grid,
-.math-topic-grid,
+.math-level-row,
+.math-trail,
+.math-badge-grid,
 .math-progress-list {
   margin: 0;
   padding: 0;
@@ -563,9 +565,60 @@
 }
 
 .math-player-card,
-.math-topic-card {
+.math-point-card {
   width: 100%;
   box-shadow: var(--shadow);
+}
+
+.math-player-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* A player's six points on their current level, on the home card. */
+.math-dots {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.math-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--muted-foreground);
+  background: var(--card);
+}
+
+.math-dot[data-done="yes"] {
+  border-color: var(--chart-2);
+  background: var(--chart-2);
+}
+
+.math-card-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 0.9rem;
+  margin: 0;
+}
+
+.math-crown {
+  width: 1.4rem;
+  height: 1.4rem;
+  color: var(--chart-1);
+}
+
+.math-crown-big {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.math-medal {
+  width: 1.2rem;
+  height: 1.2rem;
+  color: var(--chart-4);
 }
 
 .math-player-name {
@@ -666,36 +719,315 @@
   height: 3.5rem;
 }
 
-/* Levels and topics. */
+/* The eight levels, each with its land's picture; one not open yet rests with a lock. */
 .math-levels {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .math-level-row {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 0.4rem;
-  max-width: 25rem;
+  max-width: 36rem;
 }
 
 .math-level-button {
+  flex-direction: column;
+  gap: 0.1rem;
   width: 100%;
-  height: 2.75rem;
+  height: 3.75rem;
   padding: 0;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
-.math-topic-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+.math-level-picture {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.math-level-button[data-state="locked"] .math-level-picture {
+  filter: grayscale(1);
+}
+
+/* The shown level: its land, then its six points on one trail. */
+.math-land {
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
 }
 
-.math-topic-grid > li {
+.math-land-head {
   display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.math-land-picture {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  background: var(--accent);
+  font-size: 2.3rem;
+  line-height: 1;
+}
+
+.math-land-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.math-land-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+/*
+ * The trail: a point's circle on one line, its card beside it. The line runs
+ * through every circle; the part that leads to a point not open yet is dashed.
+ * On a wide window the cards take turns on the two sides of the line.
+ */
+.math-trail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.math-point {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.math-point > .math-node {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.math-point > .math-point-card {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.math-point::before,
+.math-point::after {
+  content: "";
+  position: absolute;
+  left: calc(2.125rem - 2px);
+  width: 4px;
+  background: var(--primary);
+}
+
+.math-point::before {
+  top: -0.45rem;
+  bottom: 50%;
+}
+
+.math-point::after {
+  top: 50%;
+  bottom: -0.45rem;
+}
+
+.math-point:first-child::before,
+.math-point:last-child::after {
+  display: none;
+}
+
+.math-point[data-state="locked"]::before,
+.math-point[data-onward="no"]::after {
+  width: 0;
+  border-left: 4px dashed var(--border);
+  background: none;
+}
+
+.math-node {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 3px solid var(--primary);
+  background: var(--card);
+  color: var(--primary);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.math-node svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.math-point[data-state="done"] .math-node {
+  border-color: var(--chart-2);
+  color: var(--chart-2);
+}
+
+.math-point[data-state="done"][data-gate="yes"] .math-node {
+  border-color: var(--chart-1);
+  color: var(--chart-1);
+}
+
+.math-point[data-state="locked"] .math-node {
+  border-style: dashed;
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+/* Where the player stands: their animal, in a ring that breathes slowly. */
+.math-point[data-state="next"] .math-node {
+  width: 4.25rem;
+  height: 4.25rem;
+  background: var(--accent);
+  outline: 0.2rem solid var(--chart-1);
+  outline-offset: 0.1rem;
+  animation: math-here 1.6s ease-in-out infinite alternate;
+}
+
+.math-node-animal {
+  font-size: 2.3rem;
+}
+
+.math-point[data-state="next"] .math-point-card {
+  outline: 2px solid var(--primary);
+}
+
+.math-point[data-state="locked"] .math-point-card {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  box-shadow: none;
+}
+
+.math-point[data-state="locked"] .math-example {
+  background: var(--background);
+  color: var(--muted-foreground);
+}
+
+.math-point-name {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.math-point-kicker {
+  color: var(--muted-foreground);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.math-here {
+  padding: 0.15rem 0.6rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.math-point-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.math-point-locked svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+@media (min-width: 48rem) {
+  .math-point {
+    grid-template-columns: minmax(0, 1fr) 4.5rem minmax(0, 1fr);
+  }
+
+  .math-point > .math-node {
+    grid-column: 2;
+  }
+
+  .math-point[data-side="start"] > .math-point-card {
+    grid-column: 1;
+  }
+
+  .math-point[data-side="end"] > .math-point-card {
+    grid-column: 3;
+  }
+
+  /* The cards take turns, so each can tuck in beside the one before. */
+  .math-point + .math-point {
+    margin-top: -2.25rem;
+  }
+
+  .math-point::before,
+  .math-point::after {
+    left: calc(50% - 2px);
+  }
+}
+
+/* Badges: won ones in the highlight, the others pale until they are won. */
+/* One row a level: its badge, then its gold badge. */
+.math-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.math-badge-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.75rem 0.5rem;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.math-badge-tile[data-won="yes"] {
+  border-color: var(--chart-1);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.math-badge-picture {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background: var(--card);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.math-badge-picture svg {
+  width: 1.7rem;
+  height: 1.7rem;
+  color: var(--chart-1);
+}
+
+.math-badge-tile[data-won="no"] .math-badge-picture {
+  filter: grayscale(1);
+  opacity: 0.45;
 }
 
 .math-example {
@@ -727,6 +1059,42 @@
 .math-question {
   box-shadow: var(--shadow);
   padding: 1rem 0;
+}
+
+/* The paper's button and Read it to me, side by side under the question. */
+.math-question-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+}
+
+/*
+ * A typed question on a wide window: the question, and under it the paper when
+ * it is open, on the left; the answer box, the keys and Check on the right. A
+ * laptop's window then shows the sum, the paper and Check at once, with no
+ * scroll between them. On a narrow window, and for the choices of levels 1 and
+ * 2, everything stands in one column as before (the wrapper is not drawn).
+ */
+.math-work {
+  display: contents;
+}
+
+@media (min-width: 60rem) {
+  .math-work[data-typed="true"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    grid-template-areas:
+      "question answer"
+      "paper answer";
+    align-items: start;
+    gap: 1.25rem 1.5rem;
+  }
+
+  .math-work[data-typed="true"] > .math-question { grid-area: question; }
+  .math-work[data-typed="true"] > .math-paper-place { grid-area: paper; }
+  .math-work[data-typed="true"] > .math-typing { grid-area: answer; }
 }
 
 .math-ask {
@@ -787,6 +1155,11 @@
   font-size: clamp(1.5rem, 8.5cqi, 4rem);
 }
 
+/* The widest sum (three angles with their degree marks) is a little smaller on a narrow card, so it keeps one line. */
+.math-sum-big[data-long="true"] {
+  font-size: clamp(1.25rem, 7cqi, 4rem);
+}
+
 .math-sum-small {
   justify-content: flex-start;
   font-size: 1.15rem;
@@ -800,7 +1173,8 @@
 /* Brackets and commas belong to the numbers beside them: ink like the numbers, and no gap on their inner side. */
 .math-open,
 .math-close,
-.math-comma {
+.math-comma,
+.math-dots {
   color: var(--foreground);
 }
 
@@ -1052,6 +1426,164 @@
   text-align: center;
 }
 
+/*
+ * Number blocks. A block is a square of `--cell`; a ten is a rod of ten
+ * cells, a hundred a flat of ten rods, their cells marked by thin lines of the
+ * card colour, so a rod reads as one piece and single blocks as loose ones. The cell follows the card's width, so a picture never runs off it.
+ * In a tower or a ten frame the first five blocks are blue and the next five
+ * gold, so five is seen at a glance; an empty place is a dashed square.
+ */
+.math-blocks {
+  --cell: clamp(1.1rem, 5cqi, 1.6rem);
+  --line: max(1px, calc(var(--cell) / 8));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(var(--cell) * 0.8);
+}
+
+.math-blocks[data-size="frame"] { --cell: clamp(2rem, 9cqi, 3rem); }
+.math-blocks[data-size="big"] { --cell: clamp(0.75rem, 3.6cqi, 1.15rem); }
+.math-blocks[data-size="mid"] { --cell: clamp(0.55rem, 2.6cqi, 0.9rem); }
+.math-blocks[data-size="small"] { --cell: clamp(0.5rem, 2cqi, 0.8rem); }
+
+.math-tower,
+.math-ones {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.math-block,
+.math-one {
+  width: var(--cell);
+  height: var(--cell);
+  border: var(--line) solid var(--card);
+  background: var(--primary);
+}
+
+.math-block[data-fill="more"] {
+  background: var(--chart-1);
+}
+
+.math-block[data-fill="empty"] {
+  border: var(--line) dashed var(--muted-foreground);
+  background: transparent;
+}
+
+.math-frame {
+  display: grid;
+  grid-template-columns: repeat(5, var(--cell));
+  gap: calc(var(--cell) * 0.18);
+  padding: calc(var(--cell) * 0.12);
+  border: 0.2rem solid var(--foreground);
+}
+
+/* Single blocks stand apart, so each one is counted. */
+.math-ones {
+  gap: calc(var(--cell) * 0.2);
+}
+
+.math-one {
+  border: 0;
+}
+
+.math-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(var(--cell) * 1.2);
+}
+
+/* A group of one kind of block with what one piece is worth under it. */
+.math-place-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.math-place-each {
+  color: var(--muted-foreground);
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.math-rods,
+.math-flats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: calc(var(--cell) * 0.7);
+}
+
+/* At most three flats side by side, so nine stand as a square of three rows. */
+.math-flats {
+  max-width: calc(var(--cell) * 32);
+  gap: calc(var(--cell) * 0.8);
+}
+
+.math-rod {
+  width: var(--cell);
+  height: calc(var(--cell) * 10);
+  background-color: var(--chart-2);
+  background-image: linear-gradient(to bottom, var(--card) 1px, transparent 1px);
+  background-size: 100% var(--cell);
+}
+
+/* Inside a group's box the lines between a rod's cells take the box's colour. */
+.math-group .math-rod {
+  background-image: linear-gradient(to bottom, var(--muted) 1px, transparent 1px);
+}
+
+.math-flat {
+  width: calc(var(--cell) * 10);
+  height: calc(var(--cell) * 10);
+  background-color: var(--chart-4);
+  background-image:
+    linear-gradient(to bottom, var(--card) 1px, transparent 1px),
+    linear-gradient(to right, var(--card) 1px, transparent 1px);
+  background-size: var(--cell) var(--cell);
+}
+
+/* A bag of marbles: red ones first, then blue ones, each with a small shine. */
+.math-bag {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  max-width: 13rem;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 0.2rem solid var(--border);
+  border-radius: var(--radius) var(--radius) calc(var(--radius) * 3) calc(var(--radius) * 3);
+  background: var(--muted);
+}
+
+.math-marble {
+  width: 1.9rem;
+  height: 1.9rem;
+  background-color: var(--chart-5);
+  background-image: radial-gradient(circle at 35% 30%, var(--card) 0 14%, transparent 16%);
+}
+
+.math-marble[data-colour="red"] {
+  background-color: var(--chart-3);
+}
+
+/* Two equations one above the other, their left ends in line. */
+.math-equations {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.math-equations .math-sum-big {
+  justify-content: flex-start;
+  font-size: clamp(1.4rem, 7cqi, 3.2rem);
+}
+
 /* Answering. */
 .math-choices {
   display: grid;
@@ -1143,6 +1675,185 @@
   font-weight: 700;
 }
 
+/*
+ * Squared paper. Its squares are thin lines of the border colour, `--square`
+ * apart, starting half a square in from its edge; every row is one square high
+ * and every place one square wide, so each digit stands in a square. The sign
+ * has a square of its own on the left, and a line under the numbers (and under
+ * the part rows of two-digit times) is drawn on a square's edge.
+ */
+.math-paper-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.math-paper {
+  --square: clamp(2.1rem, 9vw, 2.5rem);
+  display: inline-flex;
+  flex-direction: column;
+  padding: calc(var(--square) / 2) var(--square);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--card);
+  background-image:
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px),
+    linear-gradient(to right, var(--border) 1px, transparent 1px);
+  background-position: calc(var(--square) / 2) calc(var(--square) / 2);
+  background-size: var(--square) var(--square);
+  box-shadow: var(--shadow);
+  color: var(--card-foreground);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.math-paper-row {
+  position: relative;
+  display: flex;
+}
+
+.math-paper-row[data-line="under"]::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -0.1rem;
+  left: 0;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: var(--foreground);
+}
+
+.math-paper-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--square);
+  height: var(--square);
+  font-size: calc(var(--square) * 0.6);
+  line-height: 1;
+}
+
+.math-paper-sign {
+  color: var(--primary);
+}
+
+/*
+ * A division's parts: a row is the working under the number and, beside it in
+ * Turkish, the divisor or the answer; each part carries its own lines, drawn
+ * on a square's edge: the line under what is taken away, the vertical line
+ * before the divisor and the answer, and in English the bracket over and
+ * before the number.
+ */
+.math-paper-part {
+  position: relative;
+  display: flex;
+}
+
+.math-paper-part[data-line="under"]::after,
+.math-paper-part[data-bracket="true"]::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: var(--foreground);
+}
+
+.math-paper-part[data-line="under"]::after {
+  bottom: -0.1rem;
+}
+
+.math-paper-part[data-bracket="true"]::before {
+  top: -0.1rem;
+}
+
+.math-paper-part[data-edge="left"]::before,
+.math-paper-part[data-bracket="true"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.1rem;
+  width: 0.2rem;
+  border-radius: 999px;
+  background: var(--foreground);
+}
+
+.math-paper-part[data-bracket="true"]::after {
+  top: -0.1rem;
+  bottom: 0.2rem;
+}
+
+/* A top digit borrowed from, crossed out. */
+.math-paper-cell[data-crossed="true"] {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+  text-decoration-color: var(--chart-3);
+  text-decoration-thickness: 0.12em;
+}
+
+/* The decimal mark, on the line after the ones. */
+.math-paper-cell[data-mark]::after {
+  content: attr(data-mark);
+  position: absolute;
+  right: -0.12em;
+  bottom: 0.08em;
+}
+
+.math-paper-box {
+  width: calc(var(--square) - 0.3rem);
+  height: calc(var(--square) - 0.3rem);
+  padding: 0;
+  border-radius: calc(var(--radius) / 3);
+  border-width: 2px;
+  border-style: dashed;
+  /* Darker than the paper's lines, so a child sees at once where to write. */
+  border-color: var(--muted-foreground);
+  font-family: var(--font-display);
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.math-paper-box[data-cursor="true"] {
+  border-style: solid;
+  border-color: var(--primary);
+  background: var(--secondary);
+}
+
+/* The small boxes sit low in their square, just over the top number's digits. */
+.math-paper-row[data-row="small"] .math-paper-cell {
+  align-items: flex-end;
+}
+
+/* As big as the square leaves room for, so a small hand on a trackpad still hits it. */
+.math-paper-row[data-row="small"] .math-paper-box {
+  width: calc(var(--square) * 0.84);
+  height: calc(var(--square) * 0.68);
+  font-size: calc(var(--square) * 0.38);
+}
+
+.math-paper-row[data-row="small"] .math-paper-written {
+  padding-bottom: 0.1em;
+  color: var(--primary);
+  font-size: calc(var(--square) * 0.38);
+}
+
+.math-paper-solved {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.math-paper-solved-title {
+  font-weight: 700;
+}
+
 .math-feedback {
   border-left: 0.5rem solid var(--chart-2);
   box-shadow: var(--shadow);
@@ -1170,6 +1881,205 @@
   padding: 1.5rem 0;
 }
 
+/* What a round opened: one highlighted panel for the biggest moment, a line for the others. */
+.math-moment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 26rem;
+  padding: 1rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.math-moment-picture {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  background: var(--card);
+  font-size: 2.8rem;
+  line-height: 1;
+  animation: math-pop 0.45s ease-out 0.65s both;
+}
+
+.math-moment-picture svg {
+  width: 2.4rem;
+  height: 2.4rem;
+  color: var(--chart-1);
+}
+
+/* The player's animal arrives at the new level, at the edge of its picture. */
+.math-moment-picture {
+  position: relative;
+}
+
+.math-moment-animal {
+  position: absolute;
+  right: -0.5rem;
+  bottom: -0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid var(--accent);
+  background: var(--card);
+  font-size: 1.7rem;
+}
+
+.math-moment[data-moment="levelOpened"] .math-moment-picture,
+.math-moment[data-moment="finished"] .math-moment-picture {
+  width: 6rem;
+  height: 6rem;
+  font-size: 3.8rem;
+}
+
+.math-moment-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.math-moment-headline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.45rem 1.1rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.math-moment-headline svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--chart-1);
+}
+
+/* A long next step wraps to two lines on a phone rather than running past the card. */
+.math-end-buttons .math-big-button {
+  flex-shrink: 1;
+  height: auto;
+  min-height: 3rem;
+  max-width: 100%;
+  padding-block: 0.5rem;
+  white-space: normal;
+}
+
+.math-moment-line,
+.math-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* In a big challenge, the stop each question comes from. */
+.math-from {
+  margin: 0;
+  padding: 0.2rem 0.75rem;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Read it to me, under the question. */
+.math-read {
+  color: var(--muted-foreground);
+}
+
+/* The helper under the answer: the player's animal, its answers as bubbles, and the presses. */
+.math-helper {
+  border-left: 0.5rem solid var(--chart-4);
+}
+
+.math-helper-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.math-helper-animal {
+  font-size: 2.25rem;
+  line-height: 1;
+}
+
+.math-helper-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 1.25rem;
+}
+
+.math-helper-lead,
+.math-helper-note {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+}
+
+.math-helper-turns {
+  gap: 0.75rem;
+}
+
+.math-helper-reply {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.math-helper-face {
+  flex: none;
+  font-size: 1.5rem;
+  line-height: 1.6;
+}
+
+/* An answer keeps its own line breaks, in a size a child reads easily. */
+.math-helper-text {
+  font-size: 1.05rem;
+  white-space: pre-line;
+}
+
+.math-helper-waiting {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--muted-foreground);
+}
+
+.math-helper-problem {
+  margin: 0;
+  color: var(--destructive);
+  font-size: 0.95rem;
+}
+
+.math-helper-button {
+  height: 2.75rem;
+  font-size: 1rem;
+}
+
+.math-helper-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.math-helper-field {
+  height: 2.75rem;
+  font-size: 1.05rem;
+}
+
 /* A little bounce for a right answer and for the stars, unless motion is reduced. */
 @keyframes math-pop {
   0% { transform: scale(0.6); }
@@ -1190,9 +2100,16 @@
 .math-stars-big .math-star-on:nth-child(2) { animation-delay: 0.12s; }
 .math-stars-big .math-star-on:nth-child(3) { animation-delay: 0.24s; }
 
+@keyframes math-here {
+  from { outline-offset: 0.1rem; }
+  to { outline-offset: 0.4rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .math-feedback-right .math-feedback-title,
-  .math-stars-big .math-star-on {
+  .math-stars-big .math-star-on,
+  .math-moment-picture,
+  .math-point[data-state="next"] .math-node {
     animation: none;
   }
 }

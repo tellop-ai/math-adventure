@@ -1,6 +1,6 @@
 # Math adventure
 
-A math game for children aged 6 to 14. Eight levels follow the school grades from 1st to 8th, with five topics each: counting, adding and taking away, times and sharing, fractions, decimals, percents, negative numbers, equations and more. Each round has 10 questions, shows how each answer is worked out, and wins up to three stars. Up to six players, each with an animal and a level. It keeps only the players and their results.
+A math game for children aged 6 to 14. Eight levels follow school grades 1 to 8, from counting with number blocks to equations. Each level has five to seven stages, followed by a big challenge that unlocks the next level. Each round has 10 questions, explains how to find each answer, and awards stars and badges. Big sums can be worked out on squared paper on the screen. An AI helper gives hints, explains answers, responds to children's typed or spoken questions, and reads aloud with an AI voice. Up to six players can play. It stores players, results, readings, and spoken questions on your Mac.
 
 This app was made with Tellop, the app builder by Pathnomic Labs, on Tellop's
 starting kit: Next.js and React, with Node's own SQLite for what the app keeps.

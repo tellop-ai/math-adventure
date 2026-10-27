@@ -9,6 +9,7 @@ import test from 'node:test';
 
 import { MESSAGES } from '../lib/i18n/index.js';
 import { ANIMAL_KEYS } from '../lib/math/animals.js';
+import { CHIME_MOMENTS, LANDS, MOMENTS, PANEL_MOMENTS } from '../lib/math/path.js';
 import { LEVELS, makeQuestion, starsFor, TOPIC_IDS } from '../lib/math/topics.js';
 
 /** Every word key the game builds from a name rather than writing out. */
@@ -25,6 +26,18 @@ function builtKeys() {
   for (const level of LEVELS) keys.add(`math.level.hint${level.level}`);
   for (let correct = 0; correct <= 10; correct += 1) keys.add(`math.end.title${starsFor(correct)}`);
   for (let at = 1; at <= 4; at += 1) keys.add(`math.round.right${at}`);
+  for (const land of LANDS) keys.add(`math.land.${land.key}`);
+  for (const moment of PANEL_MOMENTS) {
+    assert.ok(MOMENTS.includes(moment), moment);
+    keys.add(`math.end.moment.${moment}`);
+    keys.add(`math.end.moment.${moment}Body`);
+  }
+  for (const moment of CHIME_MOMENTS) {
+    assert.ok(MOMENTS.includes(moment), moment);
+    keys.add(`math.end.moment.${moment}`);
+  }
+  for (const line of ['badge', 'gold']) keys.add(`math.end.line.${line}`);
+  for (const opens of ['stop', 'gate', 'level', 'finish', 'badge']) keys.add(`math.end.mark.${opens}`);
   return keys;
 }
 

@@ -1,81 +1,32 @@
 import { Star } from 'lucide-react';
 
 import { t } from '../lib/i18n/index.js';
-import { formatNumber, MINUS } from '../lib/math/numbers.js';
+import { formatNumber } from '../lib/math/numbers.js';
+import { LANDS, roundWords } from '../lib/math/path.js';
+import { answerText, bracketsAfter, numberText, sumText, timesText } from '../lib/math/words.js';
+
+export { answerText, askText, sumText } from '../lib/math/words.js';
+
+/** A round's name in the reader's language: a topic, or a level's big challenge. @param {string} id @param {'en' | 'tr'} locale */
+export function roundName(id, locale) {
+  const words = roundWords(id);
+  return t(words.key, locale, words.values);
+}
+
+/** A level's name with its land, "Level 3 · River". @param {number} level @param {'en' | 'tr'} locale */
+export function levelName(level, locale) {
+  const land = LANDS[level - 1] ?? LANDS[0];
+  return t('math.level.land', locale, { level, land: t(`math.land.${land.key}`, locale) });
+}
 
 /**
  * The pieces every screen draws: a sum, the picture beside a question, a row of
- * stars, and the words of a question. Plain components with no state, used by
+ * stars, the words of a question, and the names of rounds and levels. Plain components with no state, used by
  * the game's screens.
  *
  * A sum is a list of pieces (see `lib/math/topics.js`). Each piece is drawn by
  * a class the stylesheet knows; nothing here writes a style.
  */
-
-const BRACKET_AFTER = new Set(['+', MINUS, '×', '÷']);
-
-/**
- * Whether a negative number needs brackets: right after a sign, so that
- * `4 − (−3)` never reads as `4 − −3`.
- *
- * @param {any} before
- */
-function bracketsAfter(before) {
-  return before !== undefined && typeof before.op === 'string' && BRACKET_AFTER.has(before.op);
-}
-
-/**
- * A number as text, in brackets when it is negative and asked to be.
- *
- * @param {number} value
- * @param {'en' | 'tr'} locale
- * @param {boolean} bracket
- */
-function numberText(value, locale, bracket) {
-  const text = formatNumber(value, locale);
-  return bracket && value < 0 ? `(${text})` : text;
-}
-
-/**
- * The letter x with its number in front and its power: `3x²`, `−x`, `x`.
- *
- * @param {number} times
- * @param {'en' | 'tr'} locale
- */
-function timesText(times, locale) {
-  if (times === 1) return '';
-  if (times === -1) return MINUS;
-  return formatNumber(times, locale);
-}
-
-/**
- * A sum as words for a screen reader: powers and roots said in the reader's
- * language, and the box said as "box" or, once answered, as the answer.
- *
- * @param {readonly any[]} pieces
- * @param {'en' | 'tr'} locale
- * @param {any} [answer]
- */
-export function sumText(pieces, locale, answer = null) {
-  const box = answer === null ? t('math.read.box', locale) : answerText(answer, locale);
-  const power = (base, value) => t('math.read.power', locale, { base, power: value === null ? box : String(value) });
-  return pieces
-    .map((piece, at) => {
-      if ('n' in piece) return numberText(piece.n, locale, bracketsAfter(pieces[at - 1]));
-      if ('op' in piece) return piece.op;
-      if ('f' in piece) return `${formatNumber(piece.f[0], locale)}/${formatNumber(piece.f[1], locale)}`;
-      if ('blank' in piece) return box;
-      if ('pow' in piece) return power(numberText(piece.pow[0], locale, true), piece.pow[1]);
-      if ('sqrt' in piece) return t('math.read.root', locale, { n: formatNumber(piece.sqrt, locale) });
-      if ('x' in piece) {
-        const letter = `${timesText(piece.x[0], locale)}x`;
-        return piece.x[1] === 1 ? letter : power(letter, piece.x[1]);
-      }
-      if ('sup' in piece) return t('math.read.raised', locale, { power: piece.sup === null ? box : String(piece.sup) });
-      return '';
-    })
-    .join(' ');
-}
 
 /**
  * A fraction, its top number over its bottom one.
@@ -93,22 +44,22 @@ function Fraction({ top, bottom, locale }) {
 
 /**
  * The answer box: empty while the question waits, then holding the answer
- * (a fraction stacked, like the fractions in the sum).
+ * (a fraction stacked, like the fractions in the sum) with its unit, if any.
  *
- * @param {{ small?: boolean, answer: any, locale: 'en' | 'tr' }} props
+ * @param {{ small?: boolean, answer: any, locale: 'en' | 'tr', unit?: string }} props
  */
-function Box({ small = false, answer, locale }) {
+function Box({ small = false, answer, locale, unit }) {
   const shape = small ? 'math-box math-box-small rounded-sm' : 'math-box rounded-sm';
   if (answer === null) return <span className={shape} />;
   return (
     <span className={`${shape} math-box-filled`}>
-      {answer.kind === 'fraction' ? <Fraction top={answer.top} bottom={answer.bottom} locale={locale} /> : answerText(answer, locale)}
+      {answer.kind === 'fraction' ? <Fraction top={answer.top} bottom={answer.bottom} locale={locale} /> : `${answerText(answer, locale)}${unit ?? ''}`}
     </span>
   );
 }
 
-/** The class of a sign: brackets and commas sit against the number beside them. */
-const SIGN_CLASS = Object.freeze({ '(': 'math-op math-open', ')': 'math-op math-close', ',': 'math-op math-comma' });
+/** The class of a sign: brackets and commas sit against the number beside them; the dots that end a pattern are ink. */
+const SIGN_CLASS = Object.freeze({ '(': 'math-op math-open', ')': 'math-op math-close', ',': 'math-op math-comma', '…': 'math-op math-dots' });
 
 /**
  * One piece of a sum.
@@ -120,10 +71,10 @@ const SIGN_CLASS = Object.freeze({ '(': 'math-op math-open', ')': 'math-op math-
  * @param {{ piece: any, before: any, locale: 'en' | 'tr', answer: any }} props
  */
 function Piece({ piece, before, locale, answer }) {
-  if ('n' in piece) return <span className="math-n">{numberText(piece.n, locale, bracketsAfter(before))}</span>;
+  if ('n' in piece) return <span className="math-n">{numberText(piece.n, locale, bracketsAfter(before))}{piece.unit ?? null}</span>;
   if ('op' in piece) return <span className={SIGN_CLASS[piece.op] ?? 'math-op'}>{piece.op}</span>;
   if ('f' in piece) return <Fraction top={piece.f[0]} bottom={piece.f[1]} locale={locale} />;
-  if ('blank' in piece) return <Box answer={answer} locale={locale} />;
+  if ('blank' in piece) return <Box answer={answer} locale={locale} unit={piece.unit} />;
   if ('pow' in piece) {
     return (
       <span className="math-n">
@@ -143,7 +94,7 @@ function Piece({ piece, before, locale, answer }) {
     return (
       <span className="math-n">
         {timesText(piece.x[0], locale)}
-        <span className="math-x">x</span>
+        <span className="math-x">{piece.letter ?? 'x'}</span>
         {piece.x[1] === 1 ? null : <sup className="math-sup math-sup-x">{piece.x[1]}</sup>}
       </span>
     );
@@ -165,8 +116,10 @@ function Piece({ piece, before, locale, answer }) {
  * @param {{ pieces: readonly any[], locale: 'en' | 'tr', size?: 'big' | 'small', answer?: any }} props
  */
 export function Sum({ pieces, locale, size = 'big', answer = null }) {
+  // Three angles with their degree marks make the widest sum of the game.
+  const long = pieces.filter((piece) => 'n' in piece && piece.unit !== undefined).length >= 3;
   return (
-    <span className={`math-sum math-sum-${size}`} role="img" aria-label={sumText(pieces, locale, answer)}>
+    <span className={`math-sum math-sum-${size}`} data-long={long ? 'true' : undefined} role="img" aria-label={sumText(pieces, locale, answer)}>
       {pieces.map((piece, at) => (
         <Piece key={at} piece={piece} before={pieces[at - 1]} locale={locale} answer={answer} />
       ))}
@@ -187,6 +140,73 @@ function Things({ thing, count, crossed = 0 }) {
           {thing}
         </span>
       ))}
+    </span>
+  );
+}
+
+/**
+ * Number blocks, drawn by the stylesheet: a block is a small square, a ten is
+ * a rod of ten blocks, a hundred is a flat of ten rods. Nothing here draws a
+ * number: the child counts or reads the blocks.
+ */
+
+/**
+ * A tower of up to ten blocks, built from the bottom: the first five one
+ * colour and the next five another, so five is seen at a glance.
+ *
+ * @param {{ count: number }} props
+ */
+function Tower({ count }) {
+  return (
+    <span className="math-tower">
+      {Array.from({ length: count }, (_, at) => (
+        <span key={at} className="math-block" data-fill={at >= 5 ? 'more' : 'first'} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * A ten frame: ten places in two rows of five, the first `filled` holding a
+ * block, filled along the top row first, as in a school's ten frame.
+ *
+ * @param {{ filled: number }} props
+ */
+function TenFrame({ filled }) {
+  return (
+    <span className="math-frame rounded-sm">
+      {Array.from({ length: 10 }, (_, at) => (
+        <span key={at} className="math-block" data-fill={at >= filled ? 'empty' : at >= 5 ? 'more' : 'first'} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * A number as hundreds, tens and ones: flats, then rods, then single blocks
+ * in a column (shorter than a rod, so nine never looks like ten). With
+ * `locale`, each group says under it what one of its pieces is worth ("100
+ * each"), as a child must know it to read the number.
+ *
+ * @param {{ hundreds?: number, tens: number, ones: number, locale?: 'en' | 'tr' }} props
+ */
+function PlaceBlocks({ hundreds = 0, tens, ones, locale }) {
+  const group = (count, className, piece, worth) => {
+    if (count === 0) return null;
+    const pieces = <span className={className}>{Array.from({ length: count }, (_, at) => <span key={at} className={piece} />)}</span>;
+    if (locale === undefined) return pieces;
+    return (
+      <span className="math-place-group">
+        {pieces}
+        <span className="math-place-each">{t('math.picture.each', locale, { n: worth })}</span>
+      </span>
+    );
+  };
+  return (
+    <span className="math-place">
+      {group(hundreds, 'math-flats', 'math-flat', 100)}
+      {group(tens, 'math-rods', 'math-rod', 10)}
+      {group(ones, 'math-ones', 'math-one', 1)}
     </span>
   );
 }
@@ -228,6 +248,73 @@ export function QuestionPicture({ picture, locale }) {
       </div>
     );
   }
+  if (picture.kind === 'tower') {
+    // Up to ten in one tower; for the teens a full tower of ten and a second one.
+    return (
+      <div className="math-picture" role="img" aria-label={t('math.picture.tower', locale)}>
+        <span className="math-blocks" aria-hidden="true">
+          {picture.count > 10 ? <Tower count={10} /> : null}
+          <Tower count={picture.count > 10 ? picture.count - 10 : picture.count} />
+        </span>
+      </div>
+    );
+  }
+  if (picture.kind === 'ten-places') {
+    return (
+      <div className="math-picture" role="img" aria-label={t('math.picture.tenPlaces', locale, { filled: picture.filled })}>
+        <span className="math-blocks" data-size="frame" aria-hidden="true">
+          <TenFrame filled={picture.filled} />
+        </span>
+      </div>
+    );
+  }
+  if (picture.kind === 'blocks') {
+    const label = picture.hundreds > 0
+      ? t('math.picture.blocksHundreds', locale, { hundreds: picture.hundreds, tens: picture.tens, ones: picture.ones })
+      : t('math.picture.blocksTens', locale, { tens: picture.tens, ones: picture.ones });
+    return (
+      <div className="math-picture" role="img" aria-label={label}>
+        <span className="math-blocks" data-size={picture.hundreds > 0 ? 'small' : 'big'} aria-hidden="true">
+          <PlaceBlocks hundreds={picture.hundreds} tens={picture.tens} ones={picture.ones} locale={locale} />
+        </span>
+      </div>
+    );
+  }
+  if (picture.kind === 'blocks-sum') {
+    const [first, second] = picture.groups;
+    return (
+      <div className="math-picture math-picture-groups" role="img" aria-label={t('math.picture.blocksSum', locale)}>
+        <span className="math-group math-blocks" data-size="mid" aria-hidden="true"><PlaceBlocks tens={first.tens} ones={first.ones} /></span>
+        <span className="math-op" aria-hidden="true">+</span>
+        <span className="math-group math-blocks" data-size="mid" aria-hidden="true"><PlaceBlocks tens={second.tens} ones={second.ones} /></span>
+      </div>
+    );
+  }
+  if (picture.kind === 'marbles') {
+    return (
+      <div className="math-picture" role="img" aria-label={t('math.picture.marbles', locale, { red: picture.red, blue: picture.blue })}>
+        <span className="math-bag" aria-hidden="true">
+          {Array.from({ length: picture.red + picture.blue }, (_, at) => (
+            <span key={at} className="math-marble rounded-full" data-colour={at < picture.red ? 'red' : 'blue'} />
+          ))}
+        </span>
+      </div>
+    );
+  }
+  if (picture.kind === 'equations') {
+    const [first, second] = picture.lines;
+    return (
+      <div
+        className="math-picture"
+        role="img"
+        aria-label={t('math.picture.equations', locale, { first: sumText(first, locale), second: sumText(second, locale) })}
+      >
+        <span className="math-equations" aria-hidden="true">
+          {picture.lines.map((line, at) => <Sum key={at} pieces={line} locale={locale} />)}
+        </span>
+      </div>
+    );
+  }
   if (picture.kind === 'rectangle') {
     const cm = t('math.unit.cm', locale);
     return (
@@ -256,29 +343,4 @@ export function Stars({ count, locale, size = 'small' }) {
       ))}
     </span>
   );
-}
-
-/**
- * A question's sentence in the reader's language, with its numbers written
- * the way that language writes them.
- *
- * @param {{ key: string, values?: Record<string, number> }} ask
- * @param {'en' | 'tr'} locale
- */
-export function askText(ask, locale) {
-  const values = {};
-  for (const [name, value] of Object.entries(ask.values ?? {})) values[name] = formatNumber(value, locale);
-  return t(ask.key, locale, values);
-}
-
-/**
- * An answer written out: a number, a fraction or a sign.
- *
- * @param {{ kind: string, value?: any, top?: number, bottom?: number }} answer
- * @param {'en' | 'tr'} locale
- */
-export function answerText(answer, locale) {
-  if (answer.kind === 'fraction') return `${formatNumber(answer.top, locale)}/${formatNumber(answer.bottom, locale)}`;
-  if (answer.kind === 'number') return formatNumber(answer.value, locale);
-  return String(answer.value);
 }

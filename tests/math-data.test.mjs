@@ -29,11 +29,12 @@ process.env.APP_DATA_FILE = path.join(scratch, 'app.db');
 const { COUNT_CAP, MAX_NAME, MAX_PLAYERS, REFUSED, checkNewPlayer, checkPlayerChange, checkPlayerChoice, checkRound } =
   await import('../lib/math/limits.js');
 const { ANIMAL_KEYS } = await import('../lib/math/animals.js');
-const { ROUND_LENGTH, TOPIC_IDS } = await import('../lib/math/topics.js');
+const { LEVELS, ROUND_LENGTH, TOPIC_IDS } = await import('../lib/math/topics.js');
+const { GATE_IDS, ROUND_IDS } = await import('../lib/math/path.js');
 const { currentOwner } = await import('../lib/math/owner.js');
 const { MAX_BODY_BYTES } = await import('../lib/math/request.js');
 const { DataError, closeStorage, modelAction } = await import('../lib/data/index.js');
-const { COUNT_FULL, FULL, NO_PLAYER, addPlayerFor, changePlayerFor, listPlayersFor, readPlayerFor, removePlayerFor, saveRoundFor } =
+const { COUNT_FULL, FULL, LOCKED, NO_PLAYER, addPlayerFor, changePlayerFor, listPlayersFor, readPlayerFor, removePlayerFor, saveRoundFor } =
   await import('../lib/data/players.js');
 const addRoute = await import('../app/api/players/add/route.js');
 const changeRoute = await import('../app/api/players/change/route.js');
@@ -111,8 +112,9 @@ test('a round names a known topic and 0 to 10 right answers', () => {
   for (const correct of [-1, 11, 2.5, '5']) {
     assert.throws(() => checkRound({ playerId: 1, topic: 'count', correct }), refusedWith(REFUSED), String(correct));
   }
-  for (const topic of TOPIC_IDS) assert.equal(checkRound({ playerId: 1, topic, correct: 5 }).topic, topic);
-  for (const topic of ['', 'Count', 'counting', 7]) {
+  for (const topic of ROUND_IDS) assert.equal(checkRound({ playerId: 1, topic, correct: 5 }).topic, topic);
+  assert.equal(ROUND_IDS.length, TOPIC_IDS.length + GATE_IDS.length);
+  for (const topic of ['', 'Count', 'counting', 7, 'gate-0', 'gate-9', 'gate-', 'gate-1 ']) {
     assert.throws(() => checkRound({ playerId: 1, topic, correct: 5 }), refusedWith(REFUSED), String(topic));
   }
   assert.throws(() => checkRound({ playerId: 1, topic: 'count', correct: 5, stars: 3 }), refusedWith(REFUSED), 'stars are never sent');
@@ -188,7 +190,8 @@ test('removing a player removes their results, and another owner cannot remove t
 
 test('rounds add up, the higher best stays, and the stars are worked out here', async () => {
   const owner = 'rounds-owner';
-  const player = await addPlayerFor(owner, newPlayer());
+  // Starting at level 4, so level 3's topics are open in any order.
+  const player = await addPlayerFor(owner, newPlayer({ level: 4 }));
   const first = await saveRoundFor(owner, { playerId: player.id, topic: 'times-hard', correct: 8 });
   assert.deepEqual(first, { topic: 'times-hard', stars: 2, correct: 8, score: { rounds: 1, bestStars: 2, bestCorrect: 8, answered: 10, correct: 8 } });
   const lower = await saveRoundFor(owner, { playerId: player.id, topic: 'times-hard', correct: 5 });
@@ -230,26 +233,83 @@ test('a player\'s totals never grow past the largest whole number the store keep
   assert.equal(full.score.bestStars, 3);
 });
 
+/* ---------- the path ---------- */
+
+test('a round that is not open yet on the path is refused and saves nothing', async () => {
+  const owner = 'locked-owner';
+  const player = await addPlayerFor(owner, newPlayer({ level: 1 }));
+  const [first, second, third] = LEVELS[0].topics;
+  for (const topic of [second, 'gate-1', LEVELS[1].topics[0], 'gate-2', 'using-x']) {
+    await assert.rejects(() => saveRoundFor(owner, { playerId: player.id, topic, correct: 10 }), refusedWith(LOCKED), topic);
+  }
+  assert.equal(await modelAction('TopicScore', 'count', { where: { playerId: player.id } }), 0);
+  await saveRoundFor(owner, { playerId: player.id, topic: first, correct: 5 });
+  await assert.rejects(() => saveRoundFor(owner, { playerId: player.id, topic: second, correct: 10 }), refusedWith(LOCKED), '5 right opens nothing');
+  await saveRoundFor(owner, { playerId: player.id, topic: first, correct: 6 });
+  await saveRoundFor(owner, { playerId: player.id, topic: second, correct: 6 });
+  await assert.rejects(() => saveRoundFor(owner, { playerId: player.id, topic: LEVELS[0].topics[3], correct: 10 }), refusedWith(LOCKED));
+  await saveRoundFor(owner, { playerId: player.id, topic: third, correct: 6 });
+  assert.equal((await readPlayerFor(owner, player.id)).scores[third].rounds, 1);
+});
+
+test('a big challenge saves as a round of its own, counts in the stars and opens the next level at 8 right', async () => {
+  const owner = 'gate-owner';
+  const player = await addPlayerFor(owner, newPlayer({ level: 1 }));
+  for (const topic of LEVELS[0].topics) await saveRoundFor(owner, { playerId: player.id, topic, correct: 6 });
+  const seven = await saveRoundFor(owner, { playerId: player.id, topic: 'gate-1', correct: 7 });
+  assert.deepEqual(seven.score, { rounds: 1, bestStars: 1, bestCorrect: 7, answered: 10, correct: 7 });
+  await assert.rejects(() => saveRoundFor(owner, { playerId: player.id, topic: LEVELS[1].topics[0], correct: 10 }), refusedWith(LOCKED), '7 right opens no level');
+  assert.equal((await saveRoundFor(owner, { playerId: player.id, topic: 'gate-1', correct: 8 })).stars, 2);
+  await saveRoundFor(owner, { playerId: player.id, topic: LEVELS[1].topics[0], correct: 6 });
+  const read = await readPlayerFor(owner, player.id);
+  assert.equal(read.scores['gate-1'].bestStars, 2);
+  const [card] = await listPlayersFor(owner);
+  assert.equal(card.stars, LEVELS[0].topics.length + 2 + 1, 'every stop, the challenge and the next level\'s first stop');
+  assert.equal(card.best['gate-1'], 2);
+  assert.equal(card.best[LEVELS[1].topics[0]], 1);
+  assert.equal(card.level, 1, 'the starting level stays as it was chosen');
+});
+
+test('the starting level opens the levels below it; lowering it closes what is above again', async () => {
+  const owner = 'placement-owner';
+  const player = await addPlayerFor(owner, newPlayer({ level: 5 }));
+  await saveRoundFor(owner, { playerId: player.id, topic: 'count', correct: 6 });
+  await saveRoundFor(owner, { playerId: player.id, topic: 'gate-3', correct: 10 });
+  await saveRoundFor(owner, { playerId: player.id, topic: LEVELS[4].topics[0], correct: 6 });
+  await assert.rejects(() => saveRoundFor(owner, { playerId: player.id, topic: LEVELS[4].topics[2], correct: 6 }), refusedWith(LOCKED));
+  await changePlayerFor(owner, { playerId: player.id, name: 'Deniz', animal: 'fox', level: 2, soundOn: true });
+  await assert.rejects(() => saveRoundFor(owner, { playerId: player.id, topic: LEVELS[4].topics[1], correct: 6 }), refusedWith(LOCKED));
+  await assert.rejects(() => saveRoundFor(owner, { playerId: player.id, topic: LEVELS[2].topics[0], correct: 6 }), refusedWith(LOCKED));
+  await saveRoundFor(owner, { playerId: player.id, topic: 'count', correct: 7 });
+});
+
 /* ---------- Tellop's records bounds ---------- */
 
-test('every read and save stays inside Tellop\'s records bounds, even with six players who played every topic', async () => {
+test('every read and save stays inside Tellop\'s records bounds, even with six players who played every round', async () => {
   const owner = 'bounds-owner';
   const players = [];
-  for (let at = 0; at < MAX_PLAYERS; at += 1) players.push(await addPlayerFor(owner, newPlayer({ name: 'x'.repeat(MAX_NAME) })));
+  // Starting at level 8 opens levels 1 to 7 in any order; level 8 is played along its path.
+  for (let at = 0; at < MAX_PLAYERS; at += 1) players.push(await addPlayerFor(owner, newPlayer({ name: 'x'.repeat(MAX_NAME), level: 8 })));
+  const everyRound = LEVELS.flatMap((entry) => [...entry.topics, `gate-${entry.level}`]);
+  assert.equal(everyRound.length, ROUND_IDS.length);
   for (const player of players) {
-    for (const topic of TOPIC_IDS) await saveRoundFor(owner, { playerId: player.id, topic, correct: 10 });
+    for (const topic of everyRound) await saveRoundFor(owner, { playerId: player.id, topic, correct: 10 });
   }
+  assert.equal(await modelAction('TopicScore', 'count', { where: { ownerId: owner } }), MAX_PLAYERS * ROUND_IDS.length, 'more rows than one statement may answer');
   const list = await measured(() => listPlayersFor(owner));
-  bounded(list, 'the players', 2);
+  // The players, the topics in two parts and the big challenges: one read of all the stars would answer 306 rows.
+  bounded(list, 'the players', 4);
   assert.equal(list.value.length, MAX_PLAYERS);
-  assert.ok(list.value.every((player) => player.stars === 3 * TOPIC_IDS.length));
+  assert.ok(list.value.every((player) => player.stars === 3 * ROUND_IDS.length));
+  assert.ok(list.value.every((player) => Object.keys(player.best).length === ROUND_IDS.length));
   assert.ok(mostInFlight(list) <= 1);
 
   const read = await measured(() => readPlayerFor(owner, players[0].id));
   bounded(read, 'one player', 2);
-  assert.equal(Object.keys(read.value.scores).length, TOPIC_IDS.length);
+  assert.equal(Object.keys(read.value.scores).length, ROUND_IDS.length);
 
-  bounded(await measured(() => saveRoundFor(owner, { playerId: players[0].id, topic: 'using-x', correct: 7 })), 'a round', 2);
+  bounded(await measured(() => saveRoundFor(owner, { playerId: players[0].id, topic: 'using-x', correct: 7 })), 'a round', 3);
+  bounded(await measured(() => saveRoundFor(owner, { playerId: players[0].id, topic: 'gate-8', correct: 9 })), 'a big challenge', 3);
   bounded(
     await measured(() => changePlayerFor(owner, { playerId: players[0].id, name: 'B', animal: 'cat', level: 2, soundOn: false })),
     'a change',
@@ -303,10 +363,13 @@ test('a whole game goes through the addresses, for the app\'s own owner', async 
   assert.equal(player.name, 'Mert');
   assert.notEqual(await readPlayerFor('local-owner', player.id), null, 'saved for the app\'s own owner');
 
-  const round = await roundRoute.POST(request('/api/rounds', JSON.stringify({ playerId: player.id, topic: 'add-10', correct: 10 })));
+  const round = await roundRoute.POST(request('/api/rounds', JSON.stringify({ playerId: player.id, topic: 'count', correct: 10 })));
   assertPrivate(round);
   assert.equal(round.status, 200);
   assert.equal((await round.json()).round.stars, 3);
+  const closed = await roundRoute.POST(request('/api/rounds', JSON.stringify({ playerId: player.id, topic: 'add-20', correct: 10 })));
+  assert.equal(closed.status, 400);
+  assert.deepEqual(await closed.json(), { problem: LOCKED });
 
   const changed = await changeRoute.POST(
     request('/api/players/change', JSON.stringify({ playerId: player.id, name: 'Mert', animal: 'lion', level: 2, soundOn: false })),

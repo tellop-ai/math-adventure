@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Pencil, Plus, Star, Trash2 } from 'lucide-react';
+import { Crown, Medal, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 
 import {
   AlertDialog,
@@ -20,13 +20,28 @@ import { t } from '../lib/i18n/index.js';
 import { cn } from '../lib/utils.js';
 import { animalPicture } from '../lib/math/animals.js';
 import { MAX_PLAYERS } from '../lib/math/limits.js';
+import { LANDS, progressOf } from '../lib/math/path.js';
 import { sendSave } from '../lib/math/send.js';
 
+import { levelName } from './math-pieces.jsx';
 import { PlayerDialog } from './player-dialog.jsx';
 
 /**
+ * Where a player stands on the path, from their starting level and the best
+ * stars of each round they played (`listPlayersFor`'s `best`).
+ *
+ * @param {{ level: number, best: Record<string, number> }} player
+ */
+function placeOf(player) {
+  return progressOf(player.level, Object.fromEntries(Object.entries(player.best).map(([id, stars]) => [id, { bestStars: stars }])));
+}
+
+/**
  * The first screen: who is playing. One card per player, an "Add a player"
- * card while there is room, and a welcome card when nobody is here yet.
+ * card while there is room, and a welcome card when nobody is here yet. A
+ * card shows where the player stands on the path: their current level and its
+ * land, how many of its six points are done, their stars and badges, and a
+ * crown once the adventure is finished.
  *
  * Saving happens only on a press: Save in the player window, or Remove in the
  * question that asks first. The list on screen follows each confirmed save.
@@ -38,7 +53,7 @@ import { PlayerDialog } from './player-dialog.jsx';
  *
  * @param {{
  *   locale: 'en' | 'tr',
- *   players: Array<{ id: number, seat: number, name: string, animal: string, level: number, soundOn: boolean, stars: number }>,
+ *   players: Array<{ id: number, seat: number, name: string, animal: string, level: number, soundOn: boolean, stars: number, best: Record<string, number> }>,
  *   noticeKey: string,
  * }} props
  */
@@ -74,7 +89,7 @@ export function PlayersHome({ locale, players: savedPlayers, noticeKey }) {
       const found = list.find((entry) => entry.id === player.id);
       const next = found
         ? list.map((entry) => (entry.id === player.id ? { ...entry, ...player } : entry))
-        : [...list, { ...player, stars: 0 }];
+        : [...list, { ...player, stars: 0, best: {} }];
       return next.sort((a, b) => a.seat - b.seat);
     });
     setEditing(null);
@@ -121,59 +136,85 @@ export function PlayersHome({ locale, players: savedPlayers, noticeKey }) {
         </Card>
       ) : (
         <ul className="math-player-grid">
-          {players.map((player) => (
-            <li key={player.id}>
-              <Card className="math-player-card">
-                <CardContent className="flex flex-col items-center gap-2 text-center">
-                  <span className="math-avatar rounded-full" aria-hidden="true">{animalPicture(player.animal)}</span>
-                  <h2
-                    className="math-player-name"
-                    tabIndex={-1}
-                    ref={(node) => {
-                      if (node) names.current.set(player.id, node);
-                      else names.current.delete(player.id);
-                    }}
-                  >
-                    {player.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {`${t('math.level.name', locale, { level: player.level })} · ${t(`math.level.hint${player.level}`, locale)}`}
-                  </p>
-                  <p className="math-star-count">
-                    <Star aria-hidden="true" className="math-star math-star-on" />
-                    {t('math.home.stars', locale, { count: player.stars })}
-                  </p>
-                  <a
-                    href={`/?player=${player.id}`}
-                    className={cn(buttonVariants({ size: 'lg' }), 'math-big-button w-full')}
-                    aria-label={t('math.home.playAs', locale, { name: player.name })}
-                  >
-                    {t('math.home.play', locale)}
-                  </a>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('math.home.change', locale, { name: player.name })}
-                      title={t('math.home.change', locale, { name: player.name })}
-                      onClick={() => setEditing(player.id)}
+          {players.map((player) => {
+            const place = placeOf(player);
+            const current = place.levels[place.current - 1];
+            const done = current.points.filter((point) => point.state === 'done').length;
+            return (
+              <li key={player.id}>
+                <Card className="math-player-card">
+                  <CardContent className="flex flex-col items-center gap-2 text-center">
+                    <span className="math-avatar rounded-full" aria-hidden="true">{animalPicture(player.animal)}</span>
+                    <h2
+                      className="math-player-name"
+                      tabIndex={-1}
+                      ref={(node) => {
+                        if (node) names.current.set(player.id, node);
+                        else names.current.delete(player.id);
+                      }}
                     >
-                      <Pencil aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('math.home.remove', locale, { name: player.name })}
-                      title={t('math.home.remove', locale, { name: player.name })}
-                      onClick={() => { setRemoveProblem(''); setRemoving(player.id); }}
+                      {player.name}
+                    </h2>
+                    <p className="math-player-level">
+                      <span aria-hidden="true">{LANDS[place.current - 1].picture}</span>
+                      {levelName(place.current, locale)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{t(`math.level.hint${place.current}`, locale)}</p>
+                    {place.finished ? (
+                      <p className="math-star-count">
+                        <Crown aria-hidden="true" className="math-crown" />
+                        {t('math.home.finished', locale)}
+                      </p>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="math-dots" aria-hidden="true">
+                          {current.points.map((point) => <span key={point.id} className="math-dot rounded-full" data-done={point.state === 'done' ? 'yes' : 'no'} />)}
+                        </span>
+                        <span className="text-sm">{t('math.home.done', locale, { done, total: current.points.length })}</span>
+                      </div>
+                    )}
+                    <p className="math-card-counts">
+                      <span className="math-star-count">
+                        <Star aria-hidden="true" className="math-star math-star-on" />
+                        {t('math.home.stars', locale, { count: player.stars })}
+                      </span>
+                      <span className="math-star-count">
+                        <Medal aria-hidden="true" className="math-medal" />
+                        {t('math.home.badges', locale, { count: place.badges })}
+                      </span>
+                    </p>
+                    <a
+                      href={`/?player=${player.id}`}
+                      className={cn(buttonVariants({ size: 'lg' }), 'math-big-button w-full')}
+                      aria-label={t('math.home.playAs', locale, { name: player.name })}
                     >
-                      <Trash2 aria-hidden="true" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+                      {t('math.home.play', locale)}
+                    </a>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('math.home.change', locale, { name: player.name })}
+                        title={t('math.home.change', locale, { name: player.name })}
+                        onClick={() => setEditing(player.id)}
+                      >
+                        <Pencil aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('math.home.remove', locale, { name: player.name })}
+                        title={t('math.home.remove', locale, { name: player.name })}
+                        onClick={() => { setRemoveProblem(''); setRemoving(player.id); }}
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
           {room ? (
             <li>
               <Button variant="outline" className="math-add-card" onClick={() => setEditing('new')}>
