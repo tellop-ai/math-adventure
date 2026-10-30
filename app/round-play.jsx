@@ -159,6 +159,12 @@ function letGo(event) {
  * allowance, and Read it to me on the question. Keys typed in the helper's
  * field are the child's words, never an answer.
  *
+ * `keepRound` is false for a role that keeps no rounds (`lib/math/roles.js`):
+ * the round plays the same, its stars show, and nothing is sent at its end;
+ * the end card and the note under the round say it is not kept, and nothing
+ * opens. `canRecord` is false for a role that may add nothing: the helper then
+ * keeps no recording (no Ask out loud) and reads with the device's own voice.
+ *
  * @param {{
  *   locale: 'en' | 'tr',
  *   player: { id: number, name: string, animal: string, level: number, soundOn: boolean },
@@ -170,9 +176,11 @@ function letGo(event) {
  *   onLeave: () => void,
  *   onNext: (next: { id: string, kind: 'stop' | 'gate' | 'level', level: number }) => void,
  *   onSound: (soundOn: boolean) => void,
+ *   keepRound?: boolean,
+ *   canRecord?: boolean,
  * }} props
  */
-export function RoundPlay({ locale, player, roundId, scores, notice, onSaved, onSaveProblem, onLeave, onNext, onSound }) {
+export function RoundPlay({ locale, player, roundId, scores, notice, onSaved, onSaveProblem, onLeave, onNext, onSound, keepRound = false, canRecord = false }) {
   const [seed, setSeed] = useState(freshSeed);
   const questions = useMemo(() => makeRoundFor(roundId, seed), [roundId, seed]);
   const [at, setAt] = useState(0);
@@ -184,10 +192,10 @@ export function RoundPlay({ locale, player, roundId, scores, notice, onSaved, on
   const [writing, setWriting] = useState(/** @type {null | import('../lib/math/paper.js').Writing} */ (null));
   const [right, setRight] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [round, setRound] = useState(/** @type {null | { correct: number, stars: number, newBest: boolean, saving: boolean, problem: string, moment: null | ReturnType<typeof rewardsFor> }} */ (null));
+  const [round, setRound] = useState(/** @type {null | { correct: number, stars: number, newBest: boolean, saving: boolean, problem: string, moment: null | ReturnType<typeof rewardsFor>, kept: boolean }} */ (null));
   const [ended, setEnded] = useState(false);
   const [bestSoFar, setBestSoFar] = useState(scores[roundId] ?? null);
-  const voice = useHelperVoice(locale);
+  const voice = useHelperVoice(locale, canRecord);
   // The helper's refusals that stay for this round screen: AI's, and Ask out loud's own.
   const [helperStops, setHelperStops] = useState({ ai: '', speak: '' });
   const questionCard = useRef(/** @type {HTMLDivElement | null} */ (null));
@@ -291,8 +299,13 @@ export function RoundPlay({ locale, player, roundId, scores, notice, onSaved, on
     }
     if (at + 1 === ROUND_LENGTH) {
       const correct = right + (isRight ? 1 : 0);
+      if (!keepRound) {
+        // This person's role keeps no rounds: nothing is sent, and nothing is claimed.
+        setRound({ correct, stars: starsFor(correct), newBest: false, saving: false, problem: '', moment: null, kept: false });
+        return;
+      }
       const newBest = bestSoFar !== null && bestSoFar.rounds > 0 && correct > bestSoFar.bestCorrect;
-      setRound({ correct, stars: starsFor(correct), newBest, saving: true, problem: '', moment: null });
+      setRound({ correct, stars: starsFor(correct), newBest, saving: true, problem: '', moment: null, kept: true });
       saveRound(correct);
     }
   }
@@ -459,10 +472,12 @@ export function RoundPlay({ locale, player, roundId, scores, notice, onSaved, on
     return () => window.removeEventListener('keydown', onKey);
   }, [locale]);
 
+  // Under the round and on Stop: when a round counts, or that this one is not kept.
+  const roundNote = keepRound ? 'math.round.stopNote' : 'math.round.notKept';
   const header = (
     <header className="math-bar">
       {end === null ? (
-        <Button variant="ghost" onClick={onLeave} title={t('math.round.stopNote', locale)}>
+        <Button variant="ghost" onClick={onLeave} title={t(roundNote, locale)}>
           <X aria-hidden="true" />
           {t('math.round.stop', locale)}
         </Button>
@@ -555,11 +570,13 @@ export function RoundPlay({ locale, player, roundId, scores, notice, onSaved, on
             ))}
             {moment?.mark ? <p className="math-mark">{t(`math.end.mark.${moment.mark.opens}`, locale, { right: moment.mark.right })}</p> : null}
             <p className={end.problem !== '' ? 'math-problem' : 'math-note'} role="status">
-              {end.saving
-                ? t('math.end.saving', locale)
-                : end.problem !== ''
-                  ? `${t('math.end.notSaved', locale)} ${t(end.problem, locale)}`
-                  : t('math.end.saved', locale)}
+              {!end.kept
+                ? t('math.end.notKept', locale)
+                : end.saving
+                  ? t('math.end.saving', locale)
+                  : end.problem !== ''
+                    ? `${t('math.end.notSaved', locale)} ${t(end.problem, locale)}`
+                    : t('math.end.saved', locale)}
             </p>
             {end.saving && !slowSave ? null : (
               <div className="math-end-buttons flex flex-wrap justify-center gap-2">
@@ -755,9 +772,10 @@ export function RoundPlay({ locale, player, roundId, scores, notice, onSaved, on
         voice={voice}
         stops={helperStops}
         onStop={(what, problemKey) => setHelperStops((now) => (now[what] === '' ? { ...now, [what]: problemKey } : now))}
+        canRecord={canRecord}
       />
 
-      <p className="math-note">{t('math.round.stopNote', locale)}</p>
+      <p className="math-note">{t(roundNote, locale)}</p>
     </div>
   );
 }

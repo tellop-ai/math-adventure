@@ -20,6 +20,11 @@ import { sendSave } from '../lib/math/send.js';
  * The Mac's voice is the browser's own speech, made on this computer: no word
  * leaves it. When neither voice can read, `canSay` is false and no Listen
  * button is drawn.
+ *
+ * The AI voice keeps each reading as a file of the app's, so a person whose
+ * role may add nothing (`aiVoiceAllowed` false, `lib/math/roles.js`) is read
+ * to with the device's own voice from the start, and the AI voice is never
+ * asked to read.
  */
 
 /** Voices made for fun on a Mac, which no child should hear as the helper. */
@@ -96,14 +101,15 @@ function voiceProblem(problem) {
  * One voice for the round screen.
  *
  * @param {'en' | 'tr'} locale
+ * @param {boolean} [aiVoiceAllowed] whether this person may keep the AI voice's readings
  * @returns {{ canSay: boolean, aiVoice: boolean, notice: string, waiting: string, say: (text: string) => void, quiet: () => void }}
  * `waiting` is the text the AI voice is being asked to read, or `''`; `notice`
  * is the word key for why the Mac reads instead, or `''`.
  */
-export function useHelperVoice(locale) {
+export function useHelperVoice(locale, aiVoiceAllowed = true) {
   const tag = TAGS[locale];
   const [voices, setVoices] = useState(/** @type {any[]} */ ([]));
-  const [aiRefused, setAiRefused] = useState(false);
+  const [aiRefused, setAiRefused] = useState(!aiVoiceAllowed);
   const [notice, setNotice] = useState('');
   const [waiting, setWaiting] = useState('');
   const sounds = useRef(/** @type {Map<string, string>} */ (new Map()));

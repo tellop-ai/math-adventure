@@ -105,13 +105,22 @@ function PointNode({ point, number, animal }) {
  * Back from a round, the focus is on that point's Play button, or on the
  * level's heading when that point has none.
  *
+ * Only a role that may change saved things (`canChange`, `lib/math/roles.js`,
+ * chosen on the server) saves: its Sound and its rounds. For anyone else Sound
+ * changes this visit only, every open round plays and nothing is sent to be
+ * saved, and `roleNote` says so. `canAdd` lets the helper keep a spoken
+ * question for a moment to write it down.
+ *
  * @param {{
  *   locale: 'en' | 'tr',
  *   player: { id: number, seat: number, name: string, animal: string, level: number, soundOn: boolean },
  *   scores: Record<string, { rounds: number, bestStars: number, bestCorrect: number, answered: number, correct: number }>,
+ *   canAdd?: boolean,
+ *   canChange?: boolean,
+ *   roleNote?: string,
  * }} props
  */
-export function PlayerMap({ locale, player: savedPlayer, scores: savedScores }) {
+export function PlayerMap({ locale, player: savedPlayer, scores: savedScores, canAdd = false, canChange = false, roleNote = '' }) {
   const [player, setPlayer] = useState(savedPlayer);
   const [scores, setScores] = useState(savedScores);
   const progress = useMemo(() => progressOf(player.level, scores), [player.level, scores]);
@@ -146,6 +155,17 @@ export function PlayerMap({ locale, player: savedPlayer, scores: savedScores }) 
     (playButtons.current.get(focusPoint.current) ?? levelHeading.current)?.focus();
     focusPoint.current = null;
   }, [playing, shown]);
+
+  /**
+   * Sound, pressed on the map or in a round: saved for a role that may change
+   * the player, otherwise for this visit only.
+   *
+   * @param {boolean} soundOn
+   */
+  function changeSound(soundOn) {
+    if (canChange) void saves.current.change({ soundOn }, 'error.saveFailed');
+    else setPlayer((now) => ({ ...now, soundOn }));
+  }
 
   const level = progress.levels[shown - 1] ?? progress.levels[0];
   const land = LANDS[level.level - 1];
@@ -215,7 +235,9 @@ export function PlayerMap({ locale, player: savedPlayer, scores: savedScores }) 
         onSaveProblem={roundNotSaved}
         onLeave={leaveRound}
         onNext={goNext}
-        onSound={(soundOn) => saves.current.change({ soundOn }, 'error.saveFailed')}
+        onSound={changeSound}
+        keepRound={canChange}
+        canRecord={canAdd}
       />
     );
   }
@@ -245,7 +267,7 @@ export function PlayerMap({ locale, player: savedPlayer, scores: savedScores }) 
         </a>
         <div className="math-bar-end">
           <label className="math-switch-label">
-            <Switch checked={player.soundOn} onCheckedChange={(soundOn) => saves.current.change({ soundOn }, 'error.saveFailed')} />
+            <Switch checked={player.soundOn} onCheckedChange={changeSound} />
             {t('math.map.sound', locale)}
           </label>
           <Button variant="outline" onClick={() => setShowBadges(true)}>
@@ -266,6 +288,7 @@ export function PlayerMap({ locale, player: savedPlayer, scores: savedScores }) 
       </div>
 
       {problemWords !== '' ? <p className="math-problem" role="alert">{problemWords}</p> : null}
+      {roleNote !== '' ? <p className="math-note">{t(roleNote, locale)}</p> : null}
 
       <nav className="math-levels" aria-label={t('math.level.choose', locale)}>
         <ul className="math-level-row">

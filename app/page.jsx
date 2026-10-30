@@ -2,6 +2,8 @@ import { listPlayersFor, readPlayerFor } from '../lib/data/players.js';
 import { getLocale } from '../lib/i18n/index.js';
 import { COUNT_CAP } from '../lib/math/limits.js';
 import { currentOwner } from '../lib/math/owner.js';
+import { personOrNull } from '../lib/math/person.js';
+import { controlsFor } from '../lib/math/roles.js';
 
 import { PlayerMap } from './player-map.jsx';
 import { PlayersHome } from './players-home.jsx';
@@ -15,6 +17,13 @@ import { PlayersHome } from './players-home.jsx';
  * The page only reads: the owner's players and their stars, or one player and
  * their results. Nothing is saved while it opens. If the saved players cannot
  * be read, the page still opens and says so.
+ *
+ * It first asks Tellop who is using the game (`personOrNull`) and hands the
+ * screens only what that person's role may use (`controlsFor`,
+ * `lib/math/roles.js`): `canAdd` draws Add a player, `canChange` draws Change
+ * and Remove and keeps rounds and Sound, and `roleNote` says why a person's
+ * rounds are not kept. The reads run one after another, so at most one records
+ * call is unanswered at a time.
  */
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +43,7 @@ export default async function Page({ searchParams }) {
   const locale = getLocale();
   const owner = currentOwner();
   const playerId = chosenPlayer((await searchParams)?.player);
+  const { canAdd, canChange, note } = controlsFor(await personOrNull());
   let noticeKey = '';
 
   if (playerId !== null) {
@@ -42,7 +52,14 @@ export default async function Page({ searchParams }) {
       if (found !== null) {
         return (
           <main className="math-page" data-tellop-app-marker="ok">
-            <PlayerMap locale={locale} player={found.player} scores={found.scores} />
+            <PlayerMap
+              locale={locale}
+              player={found.player}
+              scores={found.scores}
+              canAdd={canAdd}
+              canChange={canChange}
+              roleNote={note}
+            />
           </main>
         );
       }
@@ -61,7 +78,14 @@ export default async function Page({ searchParams }) {
 
   return (
     <main className="math-page" data-tellop-app-marker="ok">
-      <PlayersHome locale={locale} players={players} noticeKey={noticeKey} />
+      <PlayersHome
+        locale={locale}
+        players={players}
+        noticeKey={noticeKey}
+        canAdd={canAdd}
+        canChange={canChange}
+        roleNote={note}
+      />
     </main>
   );
 }

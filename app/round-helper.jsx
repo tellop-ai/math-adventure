@@ -18,10 +18,11 @@ import { HelperSpeak } from './helper-speak.jsx';
 
 /**
  * Refusals that stay until the round screen opens again: AI paused, used up,
- * off, or no sign-in. While one stands, the helper's presses rest and the
- * card says why once, rather than refusing every press of every question.
+ * off, at this app's limit for the day, or no sign-in. While one stands, the
+ * helper's presses rest and the card says why once, rather than refusing every
+ * press of every question.
  */
-const STAYING = new Set(['ai.paused', 'ai.allowance', 'ai.appAiOff', 'ai.signedOut', 'ai.accountChanged']);
+const STAYING = new Set(['ai.paused', 'ai.allowance', 'ai.appAiOff', 'ai.signedOut', 'ai.accountChanged', 'ai.dailyLimit', 'ai.appPaused']);
 
 /**
  * The words for a refusal. An answer that never came, or a save that failed on
@@ -50,7 +51,9 @@ function letGo(event) {
  * not change with it. Every press sends only what `helperBody` names; the
  * player's name never goes. A refusal that stays (`STAYING`) goes to the round
  * (`onStop`), which keeps it for every later question (`stops`); so does Ask
- * out loud's own.
+ * out loud's own. Ask out loud keeps the recording for a moment, so it is
+ * drawn only where the person's role may add (`canRecord`); typing a question
+ * keeps nothing and stays for everyone.
  *
  * @param {{
  *   locale: 'en' | 'tr',
@@ -60,10 +63,11 @@ function letGo(event) {
  *   voice: ReturnType<typeof import('./helper-voice.jsx').useHelperVoice>,
  *   stops: { ai: string, speak: string },
  *   onStop: (what: 'ai' | 'speak', problemKey: string) => void,
+ *   canRecord?: boolean,
  * }} props
  * `given` is what the child answered, or `null` while the question waits.
  */
-export function RoundHelper({ locale, animal, question, given, voice, stops, onStop }) {
+export function RoundHelper({ locale, animal, question, given, voice, stops, onStop, canRecord = false }) {
   const [turns, setTurns] = useState(/** @type {{ from: 'child' | 'helper', text: string }[]} */ ([]));
   const [used, setUsed] = useState(NOTHING_USED);
   const [waiting, setWaiting] = useState(/** @type {'' | 'hint' | 'explain' | 'ask'} */ (''));
@@ -236,13 +240,15 @@ export function RoundHelper({ locale, animal, question, given, voice, stops, onS
                 <Send aria-hidden="true" />
                 {t('math.helper.send', locale)}
               </Button>
-              <HelperSpeak
-                locale={locale}
-                disabled={waiting !== ''}
-                stopped={stops.speak}
-                onStop={(problemKey) => onStop('speak', problemKey)}
-                onHeard={heard}
-              />
+              {canRecord ? (
+                <HelperSpeak
+                  locale={locale}
+                  disabled={waiting !== ''}
+                  stopped={stops.speak}
+                  onStop={(problemKey) => onStop('speak', problemKey)}
+                  onHeard={heard}
+                />
+              ) : null}
             </div>
           </form>
         ) : null}

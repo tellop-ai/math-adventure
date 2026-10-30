@@ -46,6 +46,11 @@ function placeOf(player) {
  * Saving happens only on a press: Save in the player window, or Remove in the
  * question that asks first. The list on screen follows each confirmed save.
  *
+ * Only what the person's role may use is drawn (`lib/math/roles.js`, chosen on
+ * the server): Add a player with `canAdd`, Change and Remove with `canChange`.
+ * Without `canAdd` an empty list says only that nobody is here yet, and
+ * `roleNote` says why rounds are not kept. Play is for everyone.
+ *
  * When the button that opened a window is gone after its save, the focus goes
  * to a heading rather than to the top of the page: the page heading after a
  * remove, and the new player's name after the add that made the first card or
@@ -55,9 +60,12 @@ function placeOf(player) {
  *   locale: 'en' | 'tr',
  *   players: Array<{ id: number, seat: number, name: string, animal: string, level: number, soundOn: boolean, stars: number, best: Record<string, number> }>,
  *   noticeKey: string,
+ *   canAdd?: boolean,
+ *   canChange?: boolean,
+ *   roleNote?: string,
  * }} props
  */
-export function PlayersHome({ locale, players: savedPlayers, noticeKey }) {
+export function PlayersHome({ locale, players: savedPlayers, noticeKey, canAdd = false, canChange = false, roleNote = '' }) {
   const [players, setPlayers] = useState(savedPlayers);
   const [editing, setEditing] = useState(/** @type {null | 'new' | number} */ (null));
   const [removing, setRemoving] = useState(/** @type {null | number} */ (null));
@@ -70,7 +78,7 @@ export function PlayersHome({ locale, players: savedPlayers, noticeKey }) {
 
   const editedPlayer = typeof editing === 'number' ? players.find((player) => player.id === editing) ?? null : null;
   const removedPlayer = removing === null ? null : players.find((player) => player.id === removing) ?? null;
-  const room = players.length < MAX_PLAYERS;
+  const room = canAdd && players.length < MAX_PLAYERS;
 
   /** Where the focus goes when a window closes: a chosen place once, or where it came from. */
   function closingFocus() {
@@ -119,10 +127,19 @@ export function PlayersHome({ locale, players: savedPlayers, noticeKey }) {
       </header>
 
       {noticeKey !== '' ? <p className="math-problem" role="alert">{t(noticeKey, locale)}</p> : null}
+      {roleNote !== '' ? <p className="math-note">{t(roleNote, locale)}</p> : null}
       {/* Always in place, so the words are said when they change. */}
       <p className={line !== '' ? 'math-note' : 'sr-only'} role="status">{line}</p>
 
-      {players.length === 0 ? (
+      {players.length === 0 && !canAdd ? (
+        <Card className="math-welcome">
+          <CardContent className="flex flex-col items-center gap-4 text-center">
+            <span className="math-avatar math-avatar-big rounded-full" aria-hidden="true">🦉</span>
+            <h2 className="text-2xl">{t('math.home.noneTitle', locale)}</h2>
+            <p className="text-muted-foreground">{t('math.home.noneBody', locale)}</p>
+          </CardContent>
+        </Card>
+      ) : players.length === 0 ? (
         <Card className="math-welcome">
           <CardContent className="flex flex-col items-center gap-4 text-center">
             <span className="math-avatar math-avatar-big rounded-full" aria-hidden="true">🦉</span>
@@ -190,26 +207,28 @@ export function PlayersHome({ locale, players: savedPlayers, noticeKey }) {
                     >
                       {t('math.home.play', locale)}
                     </a>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t('math.home.change', locale, { name: player.name })}
-                        title={t('math.home.change', locale, { name: player.name })}
-                        onClick={() => setEditing(player.id)}
-                      >
-                        <Pencil aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t('math.home.remove', locale, { name: player.name })}
-                        title={t('math.home.remove', locale, { name: player.name })}
-                        onClick={() => { setRemoveProblem(''); setRemoving(player.id); }}
-                      >
-                        <Trash2 aria-hidden="true" />
-                      </Button>
-                    </div>
+                    {canChange ? (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t('math.home.change', locale, { name: player.name })}
+                          title={t('math.home.change', locale, { name: player.name })}
+                          onClick={() => setEditing(player.id)}
+                        >
+                          <Pencil aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t('math.home.remove', locale, { name: player.name })}
+                          title={t('math.home.remove', locale, { name: player.name })}
+                          onClick={() => { setRemoveProblem(''); setRemoving(player.id); }}
+                        >
+                          <Trash2 aria-hidden="true" />
+                        </Button>
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
               </li>
@@ -226,7 +245,7 @@ export function PlayersHome({ locale, players: savedPlayers, noticeKey }) {
         </ul>
       )}
 
-      {players.length > 0 && !room ? <p className="math-note">{t('math.home.full', locale)}</p> : null}
+      {canAdd && players.length >= MAX_PLAYERS ? <p className="math-note">{t('math.home.full', locale)}</p> : null}
       <p className="math-note">{t('math.home.private', locale)}</p>
 
       <PlayerDialog

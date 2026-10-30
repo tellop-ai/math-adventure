@@ -22,11 +22,12 @@ function canRecord() {
 
 /**
  * Refusals of writing a recording down that stay until the round screen opens
- * again: AI off, paused or used up, writing speech down paused, or a Tellop
- * that does not take the recording's language yet (it answers `ai.refused`).
- * Each later press would record the child and keep the file for nothing.
+ * again: AI off, paused, used up or at this app's limit for the day, writing
+ * speech down paused, or a Tellop that does not take the recording's language
+ * yet (it answers `ai.refused`). Each later press would record the child and
+ * keep the file for nothing.
  */
-const STAYING = new Set(['ai.paused', 'ai.allowance', 'ai.appAiOff', 'ai.signedOut', 'ai.accountChanged', 'ai.refused', 'ai.voicePaused']);
+const STAYING = new Set(['ai.paused', 'ai.allowance', 'ai.appAiOff', 'ai.signedOut', 'ai.accountChanged', 'ai.refused', 'ai.voicePaused', 'ai.dailyLimit', 'ai.appPaused']);
 
 /**
  * Ask out loud: records what the child says between their Ask out loud and

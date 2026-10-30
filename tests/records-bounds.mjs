@@ -12,7 +12,7 @@
  * started while four wait is refused, and the page shows the records as
  * unreadable). The local store has none of these, so
  * `measured` runs `work` as inside Tellop: the route's hook runs each call's
- * steps on the local store's own client (never by switching
+ * steps on the local store's own client, one after another (never by switching
  * `TELLOP_INTERNAL_RECORDS` off for a while, which would let a call started
  * meanwhile by `Promise.all` reach the store uncounted), and notes each
  * call's size and how many calls were unanswered when it started (itself
@@ -77,13 +77,12 @@ export async function measured(work) {
     try {
       // One turn of the event loop first, as a call to Tellop's records channel takes, so calls started together overlap.
       await new Promise((resolve) => setImmediate(resolve));
-      values = steps.length === 1
-        ? [await run(store.client, steps[0])]
-        : await store.client.$transaction(async (records) => {
-          const answers = [];
-          for (const step of steps) answers.push(await run(records, step));
-          return answers;
-        });
+      // A batch's steps run one after another on the local client, not as one unit: every measured call here
+      // succeeds, so the answers and their sizes are the same, and the app's code names no interactive batch of the
+      // generated client anywhere but the kit's own line in `lib/data/index.js` (Tellop's online check stops an app
+      // that does).
+      values = [];
+      for (const step of steps) values.push(await run(store.client, step));
     } finally {
       waiting -= 1;
     }
